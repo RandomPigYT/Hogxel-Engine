@@ -1,17 +1,22 @@
-PROJECT_ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
-export PROJECT_ROOT
+MAKEFLAGS += --no-print-directory
+
+ROOT_PATH := $(patsubst %/, %, $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+export ROOT_PATH
+
+CC := gcc
+LD := gcc
 
 SRC := src
 OBJ := obj
 BIN := bin
 INCLUDE := include
 
-export SRC OBJ BIN INCLUDE
+export CC LD SRC OBJ BIN INCLUDE
 
 DIRS := $(patsubst $(SRC)/%, $(OBJ)/%, $(shell find $(SRC)/ -mindepth 1 -type d))
 CREATE_DIR_COMMAND := ./dirs.sh
 
-PROJECTS := test testlib.dll
+PROJECTS := test plug.dll
 
 .PHONY: all dirs clean
 
@@ -20,15 +25,15 @@ all: dirs $(PROJECTS)
 # ---------------------- PROJECTS ----------------------
 
 test:
-	@$(MAKE) -C $(SRC)
+	@$(MAKE) -C $(SRC)/app
 
-testlib.dll: 
-	@$(MAKE) -C $(SRC)/lib
+plug.dll: 
+	@$(MAKE) -C $(SRC)/plugin
 
 # ---------------------- UTILITY ----------------------
 
 dirs: 
-	@mkdir -p $(BIN)
+	@mkdir -p $(BIN) 
 	@mkdir -p $(OBJ)
 	@$(CREATE_DIR_COMMAND) $(DIRS)
 
