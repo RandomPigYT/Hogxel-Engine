@@ -1,43 +1,33 @@
-CC:=gcc
-LD:=gcc
+PROJECT_ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+export PROJECT_ROOT
 
-CFLAGS:=-Wall -Wextra -Werror -g -std=gnu17 
-LDFLAGS:=
+SRC := src
+OBJ := obj
+BIN := bin
+INCLUDE := include
 
-BIN:=bin
-OBJ:=obj
-SRC:=src
-INCLUDE:=include
+export SRC OBJ BIN INCLUDE
 
+DIRS := $(patsubst $(SRC)/%, $(OBJ)/%, $(shell find $(SRC)/ -mindepth 1 -type d))
+CREATE_DIR_COMMAND := ./dirs.sh
 
-TARGET:=$(BIN)/test
-VALGRIND_OUT:=
+PROJECTS := test testlib.dll
 
-SRCS:=$(shell find $(SRC) -type  f -name "*.c")
-OBJS:=$(patsubst $(SRC)/%.c, $(OBJ)/%.o, $(SRCS))
-INCLUDES:=$(shell find $(INCLUDE) -type f -name "*.h")
+.PHONY: all dirs clean
 
-DIRS:=$(patsubst $(SRC)/%, $(OBJ)/%, $(shell find $(SRC)/ -mindepth 1 -type d))
+all: dirs $(PROJECTS)
 
-CREATE_DIR_COMMAND:=./dirs.sh
+# ---------------------- PROJECTS ----------------------
 
-.PHONY: all clean dirs valgrind format run
+test:
+	@$(MAKE) -C $(SRC)
 
-all: dirs $(TARGET)
+testlib.dll: 
+	@$(MAKE) -C $(SRC)/lib
 
-$(TARGET): $(OBJS)
-	@echo
-	@echo building $(TARGET)
-	@$(CC) $(CFLAGS) $(OBJS) -o $@ $(LDFLAGS)
-	@echo built $(TARGET)
+# ---------------------- UTILITY ----------------------
 
-$(OBJ)/%.o: $(SRC)/%.c
-	@echo building $@
-	@$(CC) $(CFLAGS) -c $< -o $@
-	@echo built $@
-	@echo
-
-dirs:
+dirs: 
 	@mkdir -p $(BIN)
 	@mkdir -p $(OBJ)
 	@$(CREATE_DIR_COMMAND) $(DIRS)
@@ -45,18 +35,3 @@ dirs:
 clean:
 	-@rm -rf $(OBJ)
 	-@rm -rf $(BIN)
-
-run: $(TARGET)
-	@./$(TARGET)
-
-valgrind:
-	@valgrind --leak-check=full \
-         --show-leak-kinds=all \
-         --track-origins=yes \
-         --verbose \
-         --log-file=$(VALGRIND_OUT) \
-         ./$(TARGET)	"test"
-
-format:
-	@clang-format $(SRCS) $(INCLUDES) --style=Google -i
-
