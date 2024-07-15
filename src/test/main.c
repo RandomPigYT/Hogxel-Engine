@@ -21,8 +21,8 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  SDL_Window *window =
-    SDL_CreateWindow("test", WIDTH * FACTOR, HEIGHT * FACTOR, 0);
+  SDL_Window *window = SDL_CreateWindow("test", WIDTH * FACTOR, HEIGHT * FACTOR,
+                                        SDL_WINDOW_RESIZABLE);
   if (!window) {
     SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create window: %s\n",
                  SDL_GetError());
@@ -51,16 +51,25 @@ int main(int argc, char **argv) {
       if (e.type == SDL_EVENT_QUIT) {
         break;
       }
+
+      if (e.type == SDL_EVENT_WINDOW_RESIZED ||
+          e.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
+        surface = SDL_GetWindowSurface(window);
+        SDL_GetWindowSizeInPixels(window, &width, &height);
+      }
     }
 
     for (int32_t y = 0; y < height; y++) {
       for (int32_t x = 0; x < width; x++) {
         ((uint8_t *)
-           surface->pixels)[y * surface->pitch + x * bytes_per_pixel + 0] = 0;
+           surface->pixels)[y * surface->pitch + x * bytes_per_pixel + 0] =
+          (rand() / (float)RAND_MAX) * 255;
         ((uint8_t *)
-           surface->pixels)[y * surface->pitch + x * bytes_per_pixel + 1] = 0;
+           surface->pixels)[y * surface->pitch + x * bytes_per_pixel + 1] =
+          (rand() / (float)RAND_MAX) * 255;
         ((uint8_t *)
-           surface->pixels)[y * surface->pitch + x * bytes_per_pixel + 2] = 255;
+           surface->pixels)[y * surface->pitch + x * bytes_per_pixel + 2] =
+          (rand() / (float)RAND_MAX) * 255;
         ((uint8_t *)
            surface->pixels)[y * surface->pitch + x * bytes_per_pixel + 3] = 255;
       }
