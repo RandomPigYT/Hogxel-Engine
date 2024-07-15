@@ -1,7 +1,7 @@
 PROJECTS := sdl
 
 
-.PHONY: all sdl
+.PHONY: all $(PROJECTS)
 
 all: $(PROJECTS)
 

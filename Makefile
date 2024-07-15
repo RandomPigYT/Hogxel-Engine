@@ -14,7 +14,11 @@ INCLUDE := include
 EXTERNAL_DIR := $(ROOT_PATH)/external
 EXTERNAL_LIBS_DIR := $(ROOT_PATH)/external-libs
 
-export CC LD SRC OBJ BIN INCLUDE EXTERNAL_DIR EXTERNAL_LIBS_DIR
+CFLAGS := -I$(ROOT_PATH)/$(SRC) -I$(EXTERNAL_DIR)
+LDFLAGS := -Wl,-rpath=$(ROOT_PATH)/$(BIN) -L$(ROOT_PATH)/$(BIN)
+
+
+export CC LD SRC OBJ BIN INCLUDE EXTERNAL_DIR EXTERNAL_LIBS_DIR CFLAGS LDFLAGS
 
 DIRS := $(patsubst $(SRC)/%, $(OBJ)/%, $(shell find $(SRC)/ -mindepth 1 -type d))
 CREATE_DIR_COMMAND := ./dirs.sh
@@ -32,7 +36,7 @@ doom-style-renderer.so:
 	@$(MAKE) -C $(SRC)/doom-style-renderer
 
 test: doom-style-renderer.so
-	@$(MAKE) -C $(SRC)/app
+	@$(MAKE) -C $(SRC)/test
 
 
 # ---------------------- UTILITY ----------------------

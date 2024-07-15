@@ -1,10 +1,10 @@
-PROJ_SRC := $(ROOT_PATH)/$(SRC)/app
-PROJ_OBJ := $(ROOT_PATH)/$(OBJ)/app
+PROJ_SRC := $(ROOT_PATH)/$(SRC)/test
+PROJ_OBJ := $(ROOT_PATH)/$(OBJ)/test
 PROJ_BIN := $(ROOT_PATH)/$(BIN)
 PROJ_INCLUDE := $(ROOT_PATH)/$(INCLUDE)
 
-CFLAGS := -Wall -Wextra -Werror -g -std=gnu17 -I$(ROOT_PATH)/$(SRC)
-LDFLAGS := -Wl,-rpath=$(ROOT_PATH)/$(BIN) -L$(ROOT_PATH)/$(BIN) -l:doom-style-renderer.so
+CFLAGS += -Wall -Wextra -g -std=gnu17 -I$(EXTERNAL_DIR)/SDL/include
+LDFLAGS += -Wl,-rpath=$(EXTERNAL_LIBS_DIR)/SDL -L$(EXTERNAL_LIBS_DIR)/SDL -lSDL3 -l:doom-style-renderer.so
 
 TARGET := $(PROJ_BIN)/test
 

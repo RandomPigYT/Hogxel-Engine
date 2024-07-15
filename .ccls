@@ -1,0 +1,13 @@
+clang
+-std=gnu17
+
+-Wall
+-Wextra
+-I/usr/lib/clang/16/include
+-I/usr/include
+-I/usr/linux
+
+-I.
+-I./external
+-I./external/SDL/include
+-I./src
