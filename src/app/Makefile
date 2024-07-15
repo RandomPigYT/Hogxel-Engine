@@ -1,10 +1,10 @@
-PROJ_SRC := $(ROOT_PATH)/$(SRC)
-PROJ_OBJ := $(ROOT_PATH)/$(OBJ)
+PROJ_SRC := $(ROOT_PATH)/$(SRC)/app
+PROJ_OBJ := $(ROOT_PATH)/$(OBJ)/app
 PROJ_BIN := $(ROOT_PATH)/$(BIN)
 PROJ_INCLUDE := $(ROOT_PATH)/$(INCLUDE)
 
-CFLAGS := -Wall -Wextra -Werror -g -std=gnu17 
-LDFLAGS :=
+CFLAGS := -Wall -Wextra -Werror -g -std=gnu17 -I$(ROOT_PATH)/$(SRC)
+LDFLAGS := -Wl,-rpath=$(ROOT_PATH)/$(BIN) -L$(ROOT_PATH)/$(BIN) -l:doom-style-renderer.so
 
 TARGET := $(PROJ_BIN)/test
 
@@ -20,7 +20,7 @@ $(TARGET): $(OBJS)
 	@$(LD) $(CFLAGS) $(OBJS) -o $@ $(LDFLAGS)
 	@echo built $(TARGET)
 
-$(OBJ)/%.o: $(SRC)/%.c
+$(PROJ_OBJ)/%.o: $(PROJ_SRC)/%.c
 	@echo building $@
 	@$(CC) $(CFLAGS) -c $< -o $@
 	@echo built $@

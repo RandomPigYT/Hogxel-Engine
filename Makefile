@@ -1,6 +1,6 @@
 MAKEFLAGS += --no-print-directory
 
-ROOT_PATH := $(patsubst %/, %, $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+ROOT_PATH := $(strip $(patsubst %/, %, $(dir $(abspath $(lastword $(MAKEFILE_LIST))))))
 export ROOT_PATH
 
 CC := gcc
@@ -11,26 +11,35 @@ OBJ := obj
 BIN := bin
 INCLUDE := include
 
-export CC LD SRC OBJ BIN INCLUDE
+EXTERNAL_DIR := $(ROOT_PATH)/external
+EXTERNAL_LIBS_DIR := $(ROOT_PATH)/external-libs
+
+export CC LD SRC OBJ BIN INCLUDE EXTERNAL_DIR EXTERNAL_LIBS_DIR
 
 DIRS := $(patsubst $(SRC)/%, $(OBJ)/%, $(shell find $(SRC)/ -mindepth 1 -type d))
 CREATE_DIR_COMMAND := ./dirs.sh
 
-PROJECTS := test plug.dll
 
-.PHONY: all dirs clean
+PROJECTS := test doom-style-renderer.so 
+
+.PHONY: all dirs clean external
 
 all: dirs $(PROJECTS)
 
 # ---------------------- PROJECTS ----------------------
 
-test:
+doom-style-renderer.so: 
+	@$(MAKE) -C $(SRC)/doom-style-renderer
+
+test: doom-style-renderer.so
 	@$(MAKE) -C $(SRC)/app
 
-plug.dll: 
-	@$(MAKE) -C $(SRC)/plugin
 
 # ---------------------- UTILITY ----------------------
+
+external:
+	@mkdir -p $(EXTERNAL_LIBS_DIR)
+	@$(MAKE) -C $(EXTERNAL_DIR)
 
 dirs: 
 	@mkdir -p $(BIN) 

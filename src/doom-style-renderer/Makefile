@@ -1,12 +1,12 @@
-PROJ_SRC := $(ROOT_PATH)/$(SRC)
-PROJ_OBJ := $(ROOT_PATH)/$(OBJ)
+PROJ_SRC := $(ROOT_PATH)/$(SRC)/doom-style-renderer
+PROJ_OBJ := $(ROOT_PATH)/$(OBJ)/doom-style-renderer
 PROJ_BIN := $(ROOT_PATH)/$(BIN)
 PROJ_INCLUDE := $(ROOT_PATH)/$(INCLUDE)
 
 CFLAGS := -Wall -Wextra -Werror -g -std=gnu17 -fPIC
 LDFLAGS :=
 
-TARGET := $(PROJ_BIN)/plug.dll
+TARGET := $(PROJ_BIN)/doom-style-renderer.so
 
 SRCS := $(shell find $(PROJ_SRC) -type  f -name "*.c")
 OBJS := $(patsubst $(PROJ_SRC)/%.c, $(PROJ_OBJ)/%.o, $(SRCS))
@@ -20,7 +20,7 @@ $(TARGET): $(OBJS)
 	@$(LD) $(CFLAGS) -shared $(OBJS) -o $@ $(LDFLAGS)
 	@echo built $(TARGET)
 
-$(OBJ)/%.o: $(SRC)/%.c
+$(PROJ_OBJ)/%.o: $(PROJ_SRC)/%.c
 	@echo building $@
 	@$(CC) $(CFLAGS) -c $< -o $@
 	@echo built $@
