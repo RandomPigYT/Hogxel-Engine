@@ -1,4 +1,4 @@
-MAKEFLAGS += --no-print-directory
+MAKEFLAGS += --no-print-directory -s
 
 ROOT_PATH := $(strip $(patsubst %/, %, $(dir $(abspath $(lastword $(MAKEFILE_LIST))))))
 export ROOT_PATH

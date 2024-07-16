@@ -6,7 +6,7 @@ PROJ_INCLUDE := $(ROOT_PATH)/$(INCLUDE)
 CFLAGS += -Wall -Wextra -Werror -g -std=gnu23 -fPIC
 LDFLAGS +=
 
-TARGET := $(PROJ_BIN)/doom-style-renderer.so
+TARGET := $(PROJ_BIN)/libdoom-style-renderer.so
 
 SRCS := $(shell find $(PROJ_SRC) -type  f -name "*.c")
 OBJS := $(patsubst $(PROJ_SRC)/%.c, $(PROJ_OBJ)/%.o, $(SRCS))
