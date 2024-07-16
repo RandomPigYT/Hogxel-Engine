@@ -63,9 +63,6 @@ int main(int argc, char **argv) {
   int32_t width = WIDTH * FACTOR;
   int32_t height = HEIGHT * FACTOR;
 
-  uint32_t bytes_per_pixel =
-    SDL_GetPixelFormatDetails(surface->format)->bytes_per_pixel;
-
   SDL_Event e;
   for (;;) {
     if (SDL_PollEvent(&e)) {
