@@ -1,6 +1,10 @@
 #ifndef DOOM_STYLE_RENDERER_H
 #define DOOM_STYLE_RENDERER_H
 
+#include "util/dynamic_array.h"
+#include "common/camera.h"
+
+#include <cglm/include/cglm/cglm.h>
 #include <stdint.h>
 
 struct dsr_Pixel_format {
@@ -32,10 +36,16 @@ struct dsr_Surface {
   void *pixels;
 };
 
-struct dsr_Scene {
-  /* ... */
+struct dsr_Wall {
+  vec2 vertices[2];
+  float height;
 };
 
-void dsr_render(struct dsr_Surface *surface, struct dsr_Scene *scene);
+struct dsr_Scene {
+  DA_TYPE(struct dsr_Wall) walls;
+};
+
+void dsr_render(const struct dsr_Surface *surface,
+                const struct dsr_Scene *scene, const struct hog_Camera *camera);
 
 #endif // DOOM_STYLE_RENDERER_H

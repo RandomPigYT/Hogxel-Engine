@@ -1,4 +1,7 @@
-#include "SDL/include/SDL3/SDL.h"
+#include "doom-style-renderer/doom-style-renderer.h"
+#include "util/dynamic_array.h"
+
+#include <SDL/include/SDL3/SDL.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -76,30 +79,6 @@ int main(int argc, char **argv) {
         SDL_GetWindowSizeInPixels(window, &width, &height);
       }
     }
-
-    //for (int32_t y = 0; y < height; y++) {
-    //  for (int32_t x = 0; x < width; x++) {
-    //    //((uint8_t *)
-    //    //   surface->pixels)[y * surface->pitch + x * bytes_per_pixel + 0] =
-    //    //  (rand() / (float)RAND_MAX) * 255;
-    //    //((uint8_t *)
-    //    //   surface->pixels)[y * surface->pitch + x * bytes_per_pixel + 1] =
-    //    //  (rand() / (float)RAND_MAX) * 255;
-    //    //((uint8_t *)
-    //    //   surface->pixels)[y * surface->pitch + x * bytes_per_pixel + 2] =
-    //    //  (rand() / (float)RAND_MAX) * 255;
-    //    //((uint8_t *)
-    //    //   surface->pixels)[y * surface->pitch + x * bytes_per_pixel + 3] = 255;
-
-    //    uint8_t r = (rand() / (float)RAND_MAX) * 255;
-    //    uint8_t g = (rand() / (float)RAND_MAX) * 255;
-    //    uint8_t b = (rand() / (float)RAND_MAX) * 255;
-
-    //    //*(uint32_t *)(&((uint8_t *)surface->pixels)[(y * surface->pitch) +
-    //    //                                            (x * bytes_per_pixel)]) =
-    //    //  COLOUR(format, r, g, b, 255);
-    //  }
-    //}
 
     SDL_UpdateWindowSurface(window);
   }
