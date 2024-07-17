@@ -73,11 +73,11 @@ static inline void to_screen_space(const struct dsr_Surface *surface,
 
   screen_space[0] =
     lround(glm_clamp((projected[0] / proj_plane_size[0]) + 0.5f, 0.0f, 1.0f) *
-           surface->width);
+           (surface->width - 1));
 
   screen_space[1] = lround(
     (1.0f - glm_clamp((projected[1] / proj_plane_size[1]) + 0.5f, 0.0f, 1.0f)) *
-    surface->height);
+    (surface->height - 1));
 }
 
 void dsr_render_walls(struct dsr_Surface *surface,
