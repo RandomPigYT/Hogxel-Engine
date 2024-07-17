@@ -4,7 +4,7 @@
 #include <cglm/include/cglm/cglm.h>
 
 enum hog_Camera_projection_type {
-  NONE = 0,
+  HOG_PROJECTION_NONE = 0,
 
   HOG_PERSPECTIVE_PROJECTION,
   HOG_ORTHOGRAPHIC_PROJECTION,
@@ -18,7 +18,7 @@ struct hog_Camera {
   float far_clipping_plane;
 
   vec4 position;
-  vec4 direction;
+  vec3 direction;
 
   enum hog_Camera_projection_type proj_type;
 };

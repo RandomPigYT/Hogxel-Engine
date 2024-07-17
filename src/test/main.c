@@ -1,5 +1,6 @@
 #include "doom-style-renderer/doom-style-renderer.h"
 #include "util/dynamic_array.h"
+#include "common/camera.h"
 
 #include <SDL/include/SDL3/SDL.h>
 
@@ -7,24 +8,51 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <math.h>
 
 #define WIDTH 16
 #define HEIGHT 9
 #define FACTOR 60
 
-#define COLOUR(format, r, g, b, a)       \
-  ({                                     \
-    uint32_t colour = 0;                 \
-                                         \
-    colour |= (r) << (format)->Rshift;   \
-    colour |= (g) << (format)->Gshift;   \
-    colour |= (b) << (format)->Bshift;   \
-    if ((format)->Abits) {               \
-      colour |= (a) << (format)->Ashift; \
-    }                                    \
-                                         \
-    colour;                              \
-  })
+void update_dsr_surface(struct dsr_Surface *dsr_surface,
+                        const SDL_Surface *sdl_surface) {
+  const SDL_PixelFormatDetails *format =
+    SDL_GetPixelFormatDetails(sdl_surface->format);
+
+  struct dsr_Surface s = {
+    .width = sdl_surface->w,
+    .height = sdl_surface->h,
+    .stride = sdl_surface->pitch,
+
+    .pixel_format = ({
+      struct dsr_Pixel_format pixel_format = {
+        .bits_per_pixel = format->bits_per_pixel,
+        .bytes_per_pixel = format->bytes_per_pixel,
+
+        .r_mask = format->Rmask,
+        .g_mask = format->Gmask,
+        .b_mask = format->Bmask,
+        .a_mask = format->Amask,
+
+        .r_bits = format->Rbits,
+        .g_bits = format->Gbits,
+        .b_bits = format->Bbits,
+        .a_bits = format->Abits,
+
+        .r_shift = format->Rshift,
+        .g_shift = format->Gshift,
+        .b_shift = format->Bshift,
+        .a_shift = format->Ashift,
+      };
+
+      pixel_format;
+    }),
+
+    .pixels = sdl_surface->pixels,
+  };
+
+  *dsr_surface = s;
+}
 
 int main(int argc, char **argv) {
   (void)argc;
@@ -60,40 +88,20 @@ int main(int argc, char **argv) {
               format->Gbits, format->Bbits, format->Abits, format->Rshift,
               format->Gshift, format->Bshift, format->Ashift);
 
-  int32_t width = 0;
-  int32_t height = 0;
-  SDL_GetWindowSizeInPixels(window, &width, &height);
+  struct dsr_Surface dsr_surface = { 0 };
+  update_dsr_surface(&dsr_surface, surface);
 
-  struct dsr_Surface s = {
-    .width = width,
-    .height = height,
-    .stride = surface->pitch,
+  struct hog_Camera cam = {
+    .fov = M_PI / 2.0f,
+    .aspect_ratio = 16.0f / 9.0f,
 
-    .pixel_format = ({
-      struct dsr_Pixel_format pf = {
-        .bits_per_pixel = format->bits_per_pixel,
-        .bytes_per_pixel = format->bytes_per_pixel,
+    .near_clipping_plane = 0.1f,
+    .far_clipping_plane = 20,
 
-        .r_mask = format->Rmask,
-        .g_mask = format->Gmask,
-        .b_mask = format->Bmask,
-        .a_mask = format->Amask,
+    .position = { 0.0f, 1.0f, 0.0f, 1.0f },
+    .direction = { 0.0f, 0.0f, 1.0f },
 
-        .r_bits = format->Rbits,
-        .g_bits = format->Gbits,
-        .b_bits = format->Bbits,
-        .a_bits = format->Abits,
-
-        .r_shift = format->Rshift,
-        .g_shift = format->Gshift,
-        .b_shift = format->Bshift,
-        .a_shift = format->Ashift,
-      };
-
-      pf;
-    }),
-
-    .pixels = surface->pixels,
+    .proj_type = HOG_PROJECTION_NONE,
   };
 
   SDL_Event e;
@@ -106,9 +114,11 @@ int main(int argc, char **argv) {
       if (e.type == SDL_EVENT_WINDOW_RESIZED ||
           e.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
         surface = SDL_GetWindowSurface(window);
-        SDL_GetWindowSizeInPixels(window, &width, &height);
+        update_dsr_surface(&dsr_surface, surface);
       }
     }
+
+    dsr_render(&dsr_surface, NULL, &cam);
 
     SDL_UpdateWindowSurface(window);
   }
