@@ -91,6 +91,9 @@ int main(int argc, char **argv) {
   struct dsr_Surface dsr_surface = { 0 };
   update_dsr_surface(&dsr_surface, surface);
 
+  vec4 dir = { 0.0f, 0.0f, 1.0f };
+  glm_vec3_normalize(dir);
+
   struct hog_Camera cam = {
     .fov = M_PI / 2.0f,
     .aspect_ratio = (float)dsr_surface.width / (float)dsr_surface.height,
@@ -111,8 +114,8 @@ int main(int argc, char **argv) {
   DA_APPEND(&scene.walls,
             ((struct dsr_Wall) {
               .vertices = { 
-								{ -3.0f, 5.0f }, 
-								{ 2.0f, 4.0f }, 
+								{ -5.0f, 7.0f }, 
+								{ 1.0f, 10.0f }, 
 							}, 
 
 							.height = 3.0f,

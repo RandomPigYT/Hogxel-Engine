@@ -8,18 +8,18 @@
 #include <stdint.h>
 #include <assert.h>
 
-#define DSR_COLOUR(format, r, g, b, a)   \
-  ({                                     \
-    uint32_t colour = 0;                 \
-                                         \
-    colour |= (r) << (format).r_shift;   \
-    colour |= (g) << (format).g_shift;   \
-    colour |= (b) << (format).b_shift;   \
-    if ((format).a_bits) {               \
-      colour |= (a) << (format).a_shift; \
-    }                                    \
-                                         \
-    colour;                              \
+#define DSR_COLOUR(format, r, g, b, a)     \
+  ({                                       \
+    uint32_t __colour = 0;                 \
+                                           \
+    __colour |= (r) << (format).r_shift;   \
+    __colour |= (g) << (format).g_shift;   \
+    __colour |= (b) << (format).b_shift;   \
+    if ((format).a_bits) {                 \
+      __colour |= (a) << (format).a_shift; \
+    }                                      \
+                                           \
+    __colour;                              \
   })
 
 #define DSR_PIXEL_AT(surface, pixels, x, y)                                 \
