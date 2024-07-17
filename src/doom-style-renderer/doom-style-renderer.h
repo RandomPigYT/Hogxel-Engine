@@ -6,6 +6,7 @@
 
 #include <cglm/include/cglm/cglm.h>
 #include <stdint.h>
+#include <assert.h>
 
 #define DSR_COLOUR(format, r, g, b, a)   \
   ({                                     \
@@ -22,7 +23,7 @@
   })
 
 #define DSR_PIXEL_AT(surface, pixels, x, y)                                 \
-  *({                                                                       \
+  (*({                                                                      \
     assert((pixels) != NULL && "Null pixel buffer");                        \
                                                                             \
     uint32_t *pixel = (uint32_t *)(&(                                       \
@@ -30,7 +31,7 @@
                            (x) * (surface)->pixel_format.bytes_per_pixel]); \
                                                                             \
     pixel;                                                                  \
-  })
+  }))
 
 struct dsr_Pixel_format {
   uint8_t bits_per_pixel;
@@ -62,7 +63,8 @@ struct dsr_Surface {
 };
 
 struct dsr_Wall {
-  vec2 vertices[2];
+  vec2 vertices[2]; /* The components represent the 
+											 x and z coordinates respectively */
   float height;
 };
 

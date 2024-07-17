@@ -1,5 +1,5 @@
 clang
--std=gnu17
+-std=gnu23
 
 -Wall
 -Wextra

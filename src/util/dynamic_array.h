@@ -14,11 +14,11 @@
 #define DA_GROW_FACTOR 2
 
 #define DA_AT(arr, index)                                     \
-  *({                                                         \
+  (*({                                                        \
     assert((arr).items != NULL && "Cannot index null array"); \
     assert((index) < (arr).count && "Invalid index");         \
     &(arr).items[(index)];                                    \
-  })
+  }))
 
 #define DA_APPEND(arr, item)                                            \
   do {                                                                  \

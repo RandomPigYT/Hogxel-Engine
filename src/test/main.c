@@ -93,16 +93,30 @@ int main(int argc, char **argv) {
 
   struct hog_Camera cam = {
     .fov = M_PI / 2.0f,
-    .aspect_ratio = 16.0f / 9.0f,
+    .aspect_ratio = (float)dsr_surface.width / (float)dsr_surface.height,
 
     .near_clipping_plane = 0.1f,
     .far_clipping_plane = 20,
 
-    .position = { 0.0f, 1.0f, 0.0f, 1.0f },
+    .position = { 0.0f, 1.0f, 0.0f },
     .direction = { 0.0f, 0.0f, 1.0f },
 
     .proj_type = HOG_PROJECTION_NONE,
   };
+
+  struct dsr_Scene scene = {
+    .walls = { 0 },
+  };
+
+  DA_APPEND(&scene.walls,
+            ((struct dsr_Wall) {
+              .vertices = { 
+								{ -3.0f, 5.0f }, 
+								{ 2.0f, 4.0f }, 
+							}, 
+
+							.height = 3.0f,
+            }));
 
   SDL_Event e;
   for (;;) {
@@ -115,10 +129,11 @@ int main(int argc, char **argv) {
           e.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
         surface = SDL_GetWindowSurface(window);
         update_dsr_surface(&dsr_surface, surface);
+        cam.aspect_ratio = (float)dsr_surface.width / (float)dsr_surface.height;
       }
     }
 
-    dsr_render(&dsr_surface, NULL, &cam);
+    dsr_render(&dsr_surface, &scene, &cam);
 
     SDL_UpdateWindowSurface(window);
   }

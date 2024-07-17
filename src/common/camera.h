@@ -17,7 +17,7 @@ struct hog_Camera {
   float near_clipping_plane;
   float far_clipping_plane;
 
-  vec4 position;
+  vec3 position;
   vec3 direction;
 
   enum hog_Camera_projection_type proj_type;
