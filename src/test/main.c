@@ -60,8 +60,41 @@ int main(int argc, char **argv) {
               format->Gbits, format->Bbits, format->Abits, format->Rshift,
               format->Gshift, format->Bshift, format->Ashift);
 
-  int32_t width = WIDTH * FACTOR;
-  int32_t height = HEIGHT * FACTOR;
+  int32_t width = 0;
+  int32_t height = 0;
+  SDL_GetWindowSizeInPixels(window, &width, &height);
+
+  struct dsr_Surface s = {
+    .width = width,
+    .height = height,
+    .stride = surface->pitch,
+
+    .pixel_format = ({
+      struct dsr_Pixel_format pf = {
+        .bits_per_pixel = format->bits_per_pixel,
+        .bytes_per_pixel = format->bytes_per_pixel,
+
+        .r_mask = format->Rmask,
+        .g_mask = format->Gmask,
+        .b_mask = format->Bmask,
+        .a_mask = format->Amask,
+
+        .r_bits = format->Rbits,
+        .g_bits = format->Gbits,
+        .b_bits = format->Bbits,
+        .a_bits = format->Abits,
+
+        .r_shift = format->Rshift,
+        .g_shift = format->Gshift,
+        .b_shift = format->Bshift,
+        .a_shift = format->Ashift,
+      };
+
+      pf;
+    }),
+
+    .pixels = surface->pixels,
+  };
 
   SDL_Event e;
   for (;;) {

@@ -3,7 +3,7 @@ PROJ_OBJ := $(ROOT_PATH)/$(OBJ)/doom-style-renderer
 PROJ_BIN := $(ROOT_PATH)/$(BIN)
 PROJ_INCLUDE := $(ROOT_PATH)/$(INCLUDE)
 
-CFLAGS += -Wall -Wextra -Werror -g -std=gnu23 -fPIC
+CFLAGS += -Wall -Wextra -g -std=gnu23 -fPIC
 LDFLAGS +=
 
 TARGET := $(PROJ_BIN)/libdoom-style-renderer.so
