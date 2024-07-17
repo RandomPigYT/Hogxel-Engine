@@ -14,6 +14,19 @@
 #define HEIGHT 9
 #define FACTOR 60
 
+#define PLAYER_SPEED 5.0f
+#define PLAYER_ANGULAR_SPEED 1.0f
+
+enum direction {
+  FORWARD,
+  BACKWARDS,
+  LEFT,
+  RIGHT,
+};
+
+bool moving[4] = { 0 };
+int32_t turning = 0;
+
 void update_dsr_surface(struct dsr_Surface *dsr_surface,
                         const SDL_Surface *sdl_surface) {
   const SDL_PixelFormatDetails *format =
@@ -101,8 +114,9 @@ int main(int argc, char **argv) {
     .near_clipping_plane = 0.1f,
     .far_clipping_plane = 20,
 
-    .position = { 0.0f, 1.0f, 0.0f },
-    .direction = { 0.0f, 0.0f, 1.0f },
+    .position = { 0.0f, 1.0f, -5.0f },
+    //.direction = { 0.0f, 0.0f, 1.0f },
+    .direction = { dir[0], dir[1], dir[2] },
 
     .proj_type = HOG_PROJECTION_NONE,
   };
@@ -121,8 +135,18 @@ int main(int argc, char **argv) {
 							.height = 3.0f,
             }));
 
+  uint64_t current_count = SDL_GetPerformanceCounter();
+  uint64_t prev_count = 0;
+  double deltatime = 0;
+
   SDL_Event e;
-  for (;;) {
+  while (true) {
+    prev_count = current_count;
+    current_count = SDL_GetPerformanceCounter();
+
+    deltatime = (double)(current_count - prev_count) /
+                (double)SDL_GetPerformanceFrequency();
+
     if (SDL_PollEvent(&e)) {
       if (e.type == SDL_EVENT_QUIT) {
         break;
@@ -134,8 +158,119 @@ int main(int argc, char **argv) {
         update_dsr_surface(&dsr_surface, surface);
         cam.aspect_ratio = (float)dsr_surface.width / (float)dsr_surface.height;
       }
+
+      if (e.type == SDL_EVENT_KEY_DOWN) {
+        if (e.key.key == SDLK_W) {
+          moving[FORWARD] = true;
+        }
+        if (e.key.key == SDLK_A) {
+          moving[LEFT] = true;
+        }
+        if (e.key.key == SDLK_S) {
+          moving[BACKWARDS] = true;
+        }
+        if (e.key.key == SDLK_D) {
+          moving[RIGHT] = true;
+        }
+
+        if (e.key.key == SDLK_J) {
+          turning = -1;
+        }
+        if (e.key.key == SDLK_L) {
+          turning = 1;
+        }
+      }
+
+      if (e.type == SDL_EVENT_KEY_UP) {
+        if (e.key.key == SDLK_W) {
+          moving[FORWARD] = false;
+        }
+        if (e.key.key == SDLK_A) {
+          moving[LEFT] = false;
+        }
+        if (e.key.key == SDLK_S) {
+          moving[BACKWARDS] = false;
+        }
+        if (e.key.key == SDLK_D) {
+          moving[RIGHT] = false;
+        }
+
+        if (e.key.key == SDLK_J && turning == -1) {
+          turning = 0;
+        }
+        if (e.key.key == SDLK_L && turning == 1) {
+          turning = 0;
+        }
+      }
     }
 
+    if (moving[FORWARD]) {
+      vec3 dir;
+      glm_vec3_copy(cam.direction, dir);
+
+      glm_vec3_normalize(dir);
+
+      glm_vec3_scale(dir, PLAYER_SPEED * deltatime, dir);
+
+      glm_vec3_add(cam.position, dir, cam.position);
+    }
+
+    if (moving[BACKWARDS]) {
+      vec3 dir;
+      glm_vec3_copy(cam.direction, dir);
+
+      glm_vec3_normalize(dir);
+
+      glm_vec3_negate(dir);
+      glm_vec3_scale(dir, PLAYER_SPEED * deltatime, dir);
+
+      glm_vec3_add(cam.position, dir, cam.position);
+    }
+
+    if (moving[RIGHT]) {
+      vec3 dir;
+      glm_vec3_copy(cam.direction, dir);
+
+      glm_vec3_negate(dir);
+
+      glm_vec3_normalize(dir);
+
+      glm_vec3_cross(dir, (vec3){ 0.0f, 1.0f, 0.0f }, dir);
+      glm_vec3_normalize(dir);
+      glm_vec3_scale(dir, PLAYER_SPEED * deltatime, dir);
+
+      glm_vec3_add(cam.position, dir, cam.position);
+    }
+
+    if (moving[LEFT]) {
+      vec3 dir;
+      glm_vec3_copy(cam.direction, dir);
+
+      glm_vec3_normalize(dir);
+
+      glm_vec3_cross(dir, (vec3){ 0.0f, 1.0f, 0.0f }, dir);
+      glm_vec3_normalize(dir);
+      glm_vec3_scale(dir, PLAYER_SPEED * deltatime, dir);
+
+      glm_vec3_add(cam.position, dir, cam.position);
+    }
+
+    if (turning != 0) {
+      mat4 rot = GLM_MAT4_IDENTITY_INIT;
+      glm_rotate(rot, turning * PLAYER_ANGULAR_SPEED * deltatime,
+                 (vec3){ 0.0f, 1.0f, 0.0f });
+
+      vec4 temp;
+      glm_vec3_copy(cam.direction, temp);
+      temp[3] = 1.0f;
+
+      vec4 res;
+      glm_mat4_mulv_sse2(rot, temp, res);
+
+      glm_vec3_copy(res, cam.direction);
+    }
+
+    //glm_vec3_print(cam.position, stdout);
     dsr_render(&dsr_surface, &scene, &cam);
 
     SDL_UpdateWindowSurface(window);

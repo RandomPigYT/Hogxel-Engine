@@ -13,6 +13,23 @@ static inline void get_world_coords(const vec2 map_coords, vec4 world_coords) {
   world_coords[3] = 1.0f;
 }
 
+static inline void get_relative_coords(const struct hog_Camera *camera,
+                                       const vec4 world_coords,
+                                       vec4 relative_coords) {
+  glm_vec3_sub((float *)world_coords, (float *)camera->position,
+               relative_coords);
+  relative_coords[3] = 1.0f;
+
+  float theta = atan2(camera->direction[0], camera->direction[2]);
+  mat4 rotate = GLM_MAT4_IDENTITY_INIT;
+  glm_rotate(rotate, -theta, (vec3){ 0.0f, 1.0f, 0.0f });
+
+  vec4 temp;
+  glm_mat4_mulv_sse2(rotate, relative_coords, temp);
+
+  glm_vec4_copy(temp, relative_coords);
+}
+
 static inline float x_projection(const struct hog_Camera *camera,
                                  vec4 relative_coords) {
   return relative_coords[0] * camera->near_clipping_plane / relative_coords[2];
@@ -58,9 +75,9 @@ static inline void to_screen_space(const struct dsr_Surface *surface,
     lround(glm_clamp((projected[0] / proj_plane_size[0]) + 0.5f, 0.0f, 1.0f) *
            surface->width);
 
-  screen_space[1] =
-    lround(glm_clamp((projected[1] / proj_plane_size[1]) + 0.5f, 0.0f, 1.0f) *
-           surface->height);
+  screen_space[1] = lround(
+    (1.0f - glm_clamp((projected[1] / proj_plane_size[1]) + 0.5f, 0.0f, 1.0f)) *
+    surface->height);
 }
 
 void dsr_render_walls(struct dsr_Surface *surface,
@@ -74,8 +91,8 @@ void dsr_render_walls(struct dsr_Surface *surface,
   get_world_coords(wall->vertices[1], wall_world_coords[1]);
 
   vec4 relative_coords[2] = { 0 };
-  glm_mat4_mulv_sse2(view, wall_world_coords[0], relative_coords[0]);
-  glm_mat4_mulv_sse2(view, wall_world_coords[1], relative_coords[1]);
+  get_relative_coords(camera, wall_world_coords[0], relative_coords[0]);
+  get_relative_coords(camera, wall_world_coords[1], relative_coords[1]);
 
   // Counter-clockwise
   vec2 projected[4] = { 0 };

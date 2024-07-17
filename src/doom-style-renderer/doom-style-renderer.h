@@ -72,6 +72,7 @@ struct dsr_Scene {
   DA_TYPE(struct dsr_Wall) walls;
 };
 
+// The direction vector of the camera must be normalized
 void dsr_render(struct dsr_Surface *surface, const struct dsr_Scene *scene,
                 const struct hog_Camera *camera);
 
