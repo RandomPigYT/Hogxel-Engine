@@ -246,9 +246,9 @@ static bool clipped_wall_positions(const vec4 relative_coords[2],
     }
   }
 
-  //printf("Clipped: \n");
-  //glm_vec4_print(clipped[0], stdout);
-  //glm_vec4_print(clipped[1], stdout);
+  printf("Clipped: \n");
+  glm_vec4_print(clipped[0], stdout);
+  glm_vec4_print(clipped[1], stdout);
 
   return true;
 }
@@ -357,15 +357,15 @@ static void dsr_render_wall(struct dsr_Surface *surface,
   }
 
   int32_t screen_space[4][2] = { 0 };
-  //printf("Screen space: \n");
+  printf("Screen space: \n");
   for (uint32_t i = 0; i < 4; i++) {
     to_screen_space(surface, projected[i], proj_plane_size, screen_space[i]);
-    //glm_ivec2_print((ivec2){ screen_space[i][0], screen_space[i][1] }, stdout);
+    glm_ivec2_print((ivec2){ screen_space[i][0], screen_space[i][1] }, stdout);
   }
 
-  //printf("\n");
-  //printf("======================================================\n");
-  //printf("\n");
+  printf("\n");
+  printf("======================================================\n");
+  printf("\n");
 
   //draw_vertical_line(surface, screen_space[0][0], screen_space[0][1],
   //                   screen_space[1][1], (uint8_t[]){ 255, 0, 0, 255 });
@@ -414,7 +414,8 @@ void dsr_render_walls(struct dsr_Surface *surface,
 
   for (uint32_t i = 0; i < scene->walls.count; i++) {
     dsr_render_wall(surface, &DA_AT(scene->walls, i), camera, proj_plane_size,
-                    (uint8_t[4]){ DA_AT(palette, i)[0], DA_AT(palette, i)[1],
-                                  DA_AT(palette, i)[1], 255 });
+                    (uint8_t[4]){ 255, 0, 0, 255 });
   }
+
+  DA_FREE(&palette);
 }
