@@ -5,6 +5,7 @@
 #include <cglm/include/cglm/cglm.h>
 #include <stdio.h>
 #include <complex.h>
+#include <stdbool.h>
 
 static inline void get_world_coords(const vec2 map_coords, vec4 world_coords) {
   world_coords[0] = map_coords[0];
@@ -48,18 +49,147 @@ static inline void y_projection(const struct hog_Camera *camera,
   glm_vec2_scale(projected, camera->near_clipping_plane, projected);
 }
 
-static void clipped_wall_positions(const struct dsr_Wall *wall,
-                                   struct hog_Camera *camera) {
+static inline bool is_zero(float n, float eps) {
+  return n < eps || n > -eps;
+}
+
+static bool intersect_line_segments(const vec4 line1[2], const vec4 line2[2],
+                                    vec4 intersection) {
+  vec2 p = { line1[0][0], line1[0][2] };
+  vec2 q = { line2[0][0], line2[0][2] };
+
+  vec2 r = {
+    line1[1][0] - line1[0][0],
+    line1[1][2] - line1[0][2],
+  };
+
+  vec2 s = {
+    line2[1][0] - line2[0][0],
+    line2[1][2] - line2[0][2],
+  };
+
+  float r_cross_s = glm_vec2_cross(r, s);
+  if (is_zero(r_cross_s, DSR_FLT_EPSILON)) {
+    intersection[0] = INFINITY;
+    intersection[2] = INFINITY;
+
+    return false;
+  }
+
+  vec2 q_sub_p;
+  glm_vec2_sub(q, p, q_sub_p);
+
+  float q_sub_p_cross_s = glm_vec2_cross(q_sub_p, s);
+  float q_sub_p_cross_r = glm_vec2_cross(q_sub_p, r);
+
+  float t = q_sub_p_cross_s / r_cross_s;
+  float u = q_sub_p_cross_r / r_cross_s;
+
+  if (!(t >= 0.0f && t <= 1.0f && u >= 0.0f && u <= 1.0f)) {
+    intersection[0] = INFINITY;
+    intersection[2] = INFINITY;
+
+    return false;
+  }
+
+  intersection[0] = p[0] + r[0] * t;
+  intersection[2] = p[1] + r[1] * t;
+
+  return true;
+}
+
+static bool clipped_wall_positions(const vec4 relative_coords[2],
+                                   struct hog_Camera *camera, vec4 clipped[2]) {
+  float dx = relative_coords[1][0] - relative_coords[0][0];
+
+  // Clip by near clipping plane
+
+  if (relative_coords[0][2] < camera->near_clipping_plane) {
+    vec4 dir;
+    glm_vec4_sub((float *)relative_coords[0], (float *)relative_coords[1], dir);
+
+    if (is_zero(dir[2], DSR_FLT_EPSILON)) {
+      return false;
+    }
+
+    float t = (camera->near_clipping_plane - relative_coords[1][2]) / dir[2];
+
+    clipped[0][2] = camera->near_clipping_plane;
+    clipped[0][0] = relative_coords[1][0] + dir[0] * t;
+
+  } else if (relative_coords[1][2] < camera->near_clipping_plane) {
+    vec4 dir;
+    glm_vec4_sub((float *)relative_coords[1], (float *)relative_coords[0], dir);
+
+    if (is_zero(dir[2], DSR_FLT_EPSILON)) {
+      return false;
+    }
+
+    float t = (camera->near_clipping_plane - relative_coords[0][2]) / dir[2];
+
+    clipped[1][2] = camera->near_clipping_plane;
+    clipped[1][0] = relative_coords[0][0] + dir[0] * t;
+  }
+
+  // Clip by far clipping plane
+
+  if (relative_coords[0][2] > camera->far_clipping_plane) {
+    vec4 dir;
+    glm_vec4_sub((float *)relative_coords[0], (float *)relative_coords[1], dir);
+
+    if (is_zero(dir[2], DSR_FLT_EPSILON)) {
+      return false;
+    }
+
+    float t = (camera->far_clipping_plane - relative_coords[1][2]) / dir[2];
+
+    clipped[0][2] = camera->far_clipping_plane;
+    clipped[0][0] = relative_coords[1][0] + dir[0] * t;
+
+  } else if (relative_coords[1][2] > camera->far_clipping_plane) {
+    vec4 dir;
+    glm_vec4_sub((float *)relative_coords[1], (float *)relative_coords[0], dir);
+
+    if (is_zero(dir[2], DSR_FLT_EPSILON)) {
+      return false;
+    }
+
+    float t = (camera->far_clipping_plane - relative_coords[0][2]) / dir[2];
+
+    clipped[1][2] = camera->far_clipping_plane;
+    clipped[1][0] = relative_coords[0][0] + dir[0] * t;
+  }
+
+  // TODO: Clip by view frustum
+  return true;
+}
+
+static inline uint32_t int_clamp(uint32_t val, uint32_t min_val,
+                                 uint32_t max_val) {
+  if (val < min_val) {
+    return min_val;
+
+  } else if (val > max_val) {
+    return max_val;
+
+  } else {
+    return val;
+  }
 }
 
 static void draw_vertical_line(struct dsr_Surface *surface, uint32_t x,
                                uint32_t y1, uint32_t y2, uint8_t colour[4]) {
+  if (x < 0 || x >= surface->width)
+    return;
+
   if (y2 < y1) {
     uint32_t temp = y1;
     y1 = y2;
     y2 = temp;
   }
 
+  y1 = int_clamp(y1, 0, surface->height - 1);
+  y2 = int_clamp(y2, 0, surface->height - 1);
   for (uint32_t y = y1; y <= y2; y++) {
     DSR_PIXEL_AT(surface, surface->pixels, x, y) = DSR_COLOUR(
       surface->pixel_format, colour[0], colour[1], colour[2], colour[3]);
@@ -72,12 +202,11 @@ static inline void to_screen_space(const struct dsr_Surface *surface,
   assert(proj_plane_size[0] > 0 && proj_plane_size[1] > 0);
 
   screen_space[0] =
-    lround(glm_clamp((projected[0] / proj_plane_size[0]) + 0.5f, 0.0f, 1.0f) *
-           (surface->width - 1));
+    lround(((projected[0] / proj_plane_size[0]) + 0.5f) * (surface->width - 1));
 
-  screen_space[1] = lround(
-    (1.0f - glm_clamp((projected[1] / proj_plane_size[1]) + 0.5f, 0.0f, 1.0f)) *
-    (surface->height - 1));
+  screen_space[1] =
+    lround((1.0f - ((projected[1] / proj_plane_size[1]) + 0.5f)) *
+           (surface->height - 1));
 }
 
 void dsr_render_walls(struct dsr_Surface *surface,
@@ -93,6 +222,15 @@ void dsr_render_walls(struct dsr_Surface *surface,
   vec4 relative_coords[2] = { 0 };
   get_relative_coords(camera, wall_world_coords[0], relative_coords[0]);
   get_relative_coords(camera, wall_world_coords[1], relative_coords[1]);
+
+  if (relative_coords[0][2] < camera->near_clipping_plane &&
+      relative_coords[1][2] < camera->near_clipping_plane) {
+    return;
+
+  } else if (relative_coords[0][2] > camera->far_clipping_plane &&
+             relative_coords[1][2] > camera->far_clipping_plane) {
+    return;
+  }
 
   // Counter-clockwise
   vec2 projected[4] = { 0 };
@@ -134,11 +272,21 @@ void dsr_render_walls(struct dsr_Surface *surface,
   //                     screen_space[3][1], (uint8_t[]){ 255, 0, 0, 255 });
 
   uint32_t l = screen_space[2][0] - screen_space[0][0];
-  for (uint32_t x = screen_space[0][0]; x < screen_space[2][0]; x++) {
-    float t = (float)(x - screen_space[0][0]) / (float)l;
+  int32_t sign = glm_sign(l);
 
-    uint32_t y1 = lround(glm_lerp(screen_space[0][1], screen_space[3][1], t));
-    uint32_t y2 = lround(glm_lerp(screen_space[1][1], screen_space[2][1], t));
+  uint32_t y1 = 0, y2 = 0;
+  float t = 0.0f;
+  for (uint32_t x = screen_space[0][0]; x * sign < screen_space[2][0] * sign;
+       x += sign) {
+    if (sign > 0) {
+      t = (float)(x - screen_space[0][0]) / (float)l;
+
+    } else {
+      t = 1.0f - (float)(x - screen_space[2][0]) / (float)(-l);
+    }
+
+    y1 = lround(glm_lerp(screen_space[0][1], screen_space[3][1], t));
+    y2 = lround(glm_lerp(screen_space[1][1], screen_space[2][1], t));
 
     draw_vertical_line(surface, x, y1, y2, (uint8_t[]){ 255, 0, 0, 255 });
   }

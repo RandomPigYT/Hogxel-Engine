@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
     .fov = M_PI / 2.0f,
     .aspect_ratio = (float)dsr_surface.width / (float)dsr_surface.height,
 
-    .near_clipping_plane = 0.1f,
+    .near_clipping_plane = 0.05f,
     .far_clipping_plane = 20,
 
     .position = { 0.0f, 1.0f, -5.0f },

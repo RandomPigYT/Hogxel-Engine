@@ -33,6 +33,8 @@
     pixel;                                                                  \
   }))
 
+#define DSR_FLT_EPSILON 1e-6f
+
 struct dsr_Pixel_format {
   uint8_t bits_per_pixel;
   uint8_t bytes_per_pixel;
