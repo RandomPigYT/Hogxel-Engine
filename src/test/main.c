@@ -111,10 +111,10 @@ int main(int argc, char **argv) {
     .fov = M_PI / 2.0f,
     .aspect_ratio = (float)dsr_surface.width / (float)dsr_surface.height,
 
-    .near_clipping_plane = 0.05f,
+    .near_clipping_plane = 0.1f,
     .far_clipping_plane = 20,
 
-    .position = { 0.0f, 1.0f, -5.0f },
+    .position = { 0.0f, 3.0f, -5.0f },
     //.direction = { 0.0f, 0.0f, 1.0f },
     .direction = { dir[0], dir[1], dir[2] },
 
@@ -128,12 +128,22 @@ int main(int argc, char **argv) {
   DA_APPEND(&scene.walls,
             ((struct dsr_Wall) {
               .vertices = { 
-								{ -5.0f, 7.0f }, 
-								{ 1.0f, 10.0f }, 
+								{ -5.0f, 5.0f }, 
+								{ 5.0f, 5.0f }, 
 							}, 
 
-							.height = 3.0f,
+							.height = 5.0f,
             }));
+
+  //DA_APPEND(&scene.walls,
+  //          ((struct dsr_Wall) {
+  //            .vertices = {
+  //							{ -5.0f, -5.0f },
+  //							{ 5.0f, -5.0f },
+  //						},
+
+  //						.height = 5.0f,
+  //          }));
 
   uint64_t current_count = SDL_GetPerformanceCounter();
   uint64_t prev_count = 0;

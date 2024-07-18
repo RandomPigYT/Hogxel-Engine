@@ -10,6 +10,13 @@
     uint64_t capacity; \
   }
 
+#define DA_TYPE_ARRAY(type, length) \
+  struct {                          \
+    type (*items)[(length)];        \
+    uint64_t count;                 \
+    uint64_t capacity;              \
+  }
+
 #define DA_INIT_CAPACITY 8
 #define DA_GROW_FACTOR 2
 

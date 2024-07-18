@@ -24,5 +24,5 @@ void dsr_render(struct dsr_Surface *surface, const struct dsr_Scene *scene,
          surface->width * surface->height *
            surface->pixel_format.bytes_per_pixel);
 
-  dsr_render_walls(surface, scene, camera, view, proj_plane_size);
+  dsr_render_walls(surface, scene, camera, proj_plane_size);
 }

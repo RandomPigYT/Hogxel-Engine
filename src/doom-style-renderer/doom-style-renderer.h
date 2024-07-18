@@ -56,8 +56,8 @@ struct dsr_Pixel_format {
 };
 
 struct dsr_Surface {
-  uint32_t width, height;
-  uint32_t stride; // In bytes
+  int32_t width, height;
+  int32_t stride; // In bytes
 
   struct dsr_Pixel_format pixel_format;
 
