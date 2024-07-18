@@ -4,7 +4,6 @@
 
 #include <cglm/include/cglm/cglm.h>
 #include <stdio.h>
-#include <complex.h>
 #include <stdbool.h>
 
 static inline void get_world_coords(const vec2 map_coords, vec4 world_coords) {
@@ -381,7 +380,7 @@ static void dsr_render_wall(struct dsr_Surface *surface,
 void dsr_render_walls(struct dsr_Surface *surface,
                       const struct dsr_Scene *scene,
                       const struct hog_Camera *camera, vec2 proj_plane_size) {
-  srand(69420);
+  srand(6942080085);
   for (int32_t i = 0; i < rand() % 100; i++) {
     rand();
   }
@@ -398,8 +397,11 @@ void dsr_render_walls(struct dsr_Surface *surface,
   }
 
   for (uint32_t i = 0; i < scene->walls.count; i++) {
+    //dsr_render_wall(surface, &DA_AT(scene->walls, i), camera, proj_plane_size,
+    //                (uint8_t[4]){ 255, 0, 0, 255 });
     dsr_render_wall(surface, &DA_AT(scene->walls, i), camera, proj_plane_size,
-                    (uint8_t[4]){ 255, 0, 0, 255 });
+                    (uint8_t[4]){ DA_AT(palette, i)[0], DA_AT(palette, i)[1],
+                                  DA_AT(palette, i)[2], 255 });
   }
 
   DA_FREE(&palette);
