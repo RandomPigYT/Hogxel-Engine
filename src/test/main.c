@@ -79,9 +79,8 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  SDL_Window *window =
-    SDL_CreateWindow("test", WIDTH * FACTOR, HEIGHT * FACTOR,
-                     /* SDL_WINDOW_RESIZABLE */ SDL_WINDOW_FULLSCREEN);
+  SDL_Window *window = SDL_CreateWindow("test", WIDTH * FACTOR, HEIGHT * FACTOR,
+                                        SDL_WINDOW_RESIZABLE);
   if (!window) {
     SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create window: %s\n",
                  SDL_GetError());
@@ -139,8 +138,28 @@ int main(int argc, char **argv) {
   DA_APPEND(&scene.walls,
             ((struct dsr_Wall) {
               .vertices = {
-  							{ -5.0f, 5.0f },
+  							{ -5.1f, 5.1f },
   							{ -5.0f, -5.0f },
+  						},
+
+  						.height = 5.0f,
+            }));
+
+  DA_APPEND(&scene.walls,
+            ((struct dsr_Wall) {
+              .vertices = {
+  							{ -5.0f, -5.0f },
+  							{ 5.0f, -5.0f },
+  						},
+
+  						.height = 5.0f,
+            }));
+
+  DA_APPEND(&scene.walls,
+            ((struct dsr_Wall) {
+              .vertices = {
+  							{ 5.0f, -5.0f },
+  							{ 5.0f, 5.0f },
   						},
 
   						.height = 5.0f,

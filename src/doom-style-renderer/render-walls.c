@@ -356,31 +356,43 @@ static void dsr_render_wall(struct dsr_Surface *surface,
   //draw_vertical_line(surface, screen_space[2][0], screen_space[2][1],
   //                     screen_space[3][1], (uint8_t[]){ 255, 0, 0, 255 });
 
-  int32_t l = screen_space[2][0] - screen_space[0][0];
-  int32_t sign = glm_sign(l);
+  int32_t x1, x2;
+  if (screen_space[2][0] >= screen_space[0][0]) {
+    x1 = screen_space[0][0];
+    x2 = screen_space[2][0];
+
+  } else {
+    x1 = screen_space[2][0];
+    x2 = screen_space[0][0];
+  }
+
+  int32_t l = x2 - x1;
 
   int32_t y1 = 0, y2 = 0;
   float t = 0.0f;
-  for (int32_t x = screen_space[0][0]; x * sign < screen_space[2][0] * sign;
-       x += sign) {
-    if (sign > 0) {
-      t = (float)(x - screen_space[0][0]) / (float)l;
 
-    } else {
-      t = 1.0f - (float)(x - screen_space[2][0]) / (float)(-l);
+  int32_t sign = glm_sign(screen_space[2][0] - screen_space[0][0]);
+  for (int32_t x = x1; x <= x2; x++) {
+    t = (float)(x - x1) / (float)l;
+
+    if (sign < 0) {
+      t = 1.0f - t;
     }
 
     y1 = lround(glm_lerp(screen_space[0][1], screen_space[3][1], t));
     y2 = lround(glm_lerp(screen_space[1][1], screen_space[2][1], t));
 
     draw_vertical_line(surface, x, y1, y2, wall_colour);
+    draw_vertical_line(surface, x, 0, y1, (uint8_t[4]){ 35, 35, 35, 255 });
+    draw_vertical_line(surface, x, y2, surface->height - 1,
+                       (uint8_t[4]){ 24, 24, 24, 255 });
   }
 }
 
 void dsr_render_walls(struct dsr_Surface *surface,
                       const struct dsr_Scene *scene,
                       const struct hog_Camera *camera, vec2 proj_plane_size) {
-  srand(6942080085);
+  srand((int)6942080085);
   for (int32_t i = 0; i < rand() % 100; i++) {
     rand();
   }
