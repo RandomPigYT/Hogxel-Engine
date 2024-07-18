@@ -107,6 +107,9 @@ static bool clipped_wall_positions(const vec4 relative_coords[2],
 
   // Clip by near clipping plane
 
+  printf("Clipped before: \n");
+  glm_vec4_print(clipped[0], stdout);
+  glm_vec4_print(clipped[1], stdout);
   if (clipped[0][2] < camera->near_clipping_plane) {
     vec4 dir;
     glm_vec4_sub((float *)clipped[0], (float *)clipped[1], dir);
@@ -201,50 +204,31 @@ static bool clipped_wall_positions(const vec4 relative_coords[2],
 
   vec4 dv;
   glm_vec4_sub(clipped[1], clipped[0], dv);
-  //printf("dv: \n");
-  //glm_vec4_print(dv, stdout);
+  printf("dv: \n");
+  glm_vec4_print(dv, stdout);
 
   if (intersected[0]) {
-    if (is_zero(dv[0], DSR_FLT_EPSILON)) {
-      if (dv[2] >= 0.0f) {
-        glm_vec4_copy(intersections[0], clipped[0]);
-        //printf("1. Zero, baby! Copied to 1\n");
-
-      } else {
-        glm_vec4_copy(intersections[0], clipped[1]);
-        //printf("1. Zero, baby! Copied to 2\n");
-      }
-
-    } else if (dv[0] > 0.0f) {
+    if (thetas[0] <= thetas[1]) {
       glm_vec4_copy(intersections[0], clipped[1]);
-      //printf("1. Copied to 2\n");
+      printf("1. Copied to 2\n");
 
     } else {
       glm_vec4_copy(intersections[0], clipped[0]);
-      //printf("1. Copied to 1\n");
+      printf("1. Copied to 1\n");
     }
   }
 
   if (intersected[1]) {
-    if (is_zero(dv[0], DSR_FLT_EPSILON)) {
-      if (dv[2] >= 0.0f) {
-        glm_vec4_copy(intersections[1], clipped[0]);
-        //printf("2. Zero, baby! Copied to 1\n");
-
-      } else {
-        glm_vec4_copy(intersections[1], clipped[1]);
-        //printf("2. Zero, baby! Copied to 2\n");
-      }
-
-    } else if (dv[0] > 0.0f) {
+    if (thetas[0] <= thetas[1]) {
       glm_vec4_copy(intersections[1], clipped[0]);
-      //printf("2. Copied to 1\n");
+      printf("2. Copied to 1\n");
 
     } else {
       glm_vec4_copy(intersections[1], clipped[1]);
-      //printf("2. Copied to 2\n");
+      printf("2. Copied to 2\n");
     }
   }
+  printf("Intersected: %d %d\n", intersected[0], intersected[1]);
 
   printf("Clipped: \n");
   glm_vec4_print(clipped[0], stdout);
@@ -352,8 +336,9 @@ static void dsr_render_wall(struct dsr_Surface *surface,
     projected[3][1] = temp[0];
   }
 
+  printf("Projected: \n");
   for (uint32_t i = 0; i < 4; i++) {
-    //glm_vec2_print(projected[i], stdout);
+    glm_vec2_print(projected[i], stdout);
   }
 
   int32_t screen_space[4][2] = { 0 };
