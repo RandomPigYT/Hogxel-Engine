@@ -359,14 +359,17 @@ static void dsr_render_wall(struct dsr_Surface *surface,
   //draw_vertical_line(surface, screen_space[2][0], screen_space[2][1],
   //                     screen_space[3][1], (uint8_t[]){ 255, 0, 0, 255 });
 
-  int32_t x1, x2;
+  int32_t x1, x2, z1, z2;
   if (screen_space[2][0] >= screen_space[0][0]) {
     x1 = screen_space[0][0];
+    z1 = clipped_coords[0][2];
     x2 = screen_space[2][0];
-
+    z2 = clipped_coords[1][2];
   } else {
     x1 = screen_space[2][0];
+    z1 = clipped_coords[1][2];
     x2 = screen_space[0][0];
+    z2 = clipped_coords[0][2];
   }
 
   int32_t l = x2 - x1;
@@ -378,6 +381,8 @@ static void dsr_render_wall(struct dsr_Surface *surface,
   for (int32_t x = x1; x <= x2; x++) {
     t = (float)(x - x1) / (float)l;
 
+    float depth_lerp = glm_lerp(z1, z2, t) / camera->far_clipping_plane;
+
     if (sign < 0) {
       t = 1.0f - t;
     }
@@ -385,7 +390,15 @@ static void dsr_render_wall(struct dsr_Surface *surface,
     y1 = lround(glm_lerp(screen_space[0][1], screen_space[3][1], t));
     y2 = lround(glm_lerp(screen_space[1][1], screen_space[2][1], t));
 
-    draw_vertical_line(surface, x, y1, y2, wall_colour);
+    uint8_t c[4] = {
+      glm_lerp(wall_colour[0] / 255.0f, 0.0f, depth_lerp) * 255.0f,
+      glm_lerp(wall_colour[1] / 255.0f, 0.0f, depth_lerp) * 255.0f,
+      glm_lerp(wall_colour[2] / 255.0f, 0.0f, depth_lerp) * 255.0f,
+      255,
+    };
+
+    //draw_vertical_line(surface, x, y1, y2, wall_colour);
+    draw_vertical_line(surface, x, y1, y2, c);
     draw_vertical_line(surface, x, 0, y1, (uint8_t[4]){ 35, 35, 35, 255 });
     draw_vertical_line(surface, x, y2, surface->height - 1,
                        (uint8_t[4]){ 24, 24, 24, 255 });
