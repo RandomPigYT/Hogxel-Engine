@@ -1,3 +1,4 @@
+#pragma once
 #ifndef DOOM_STYLE_RENDERER_H
 #define DOOM_STYLE_RENDERER_H
 
@@ -35,7 +36,7 @@
 
 #define DSR_FLT_EPSILON 1e-6f
 
-struct dsr_Pixel_format {
+struct dsr_PixelFormat {
   uint8_t bits_per_pixel;
   uint8_t bytes_per_pixel;
 
@@ -59,7 +60,7 @@ struct dsr_Surface {
   int32_t width, height;
   int32_t stride; // In bytes
 
-  struct dsr_Pixel_format pixel_format;
+  struct dsr_PixelFormat pixel_format;
 
   void *pixels;
 };

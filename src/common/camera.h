@@ -3,7 +3,7 @@
 
 #include <cglm/include/cglm/cglm.h>
 
-enum hog_Camera_projection_type {
+enum hog_ProjType {
   HOG_PROJECTION_NONE = 0,
 
   HOG_PERSPECTIVE_PROJECTION,
@@ -20,7 +20,7 @@ struct hog_Camera {
   vec3 position;
   vec3 direction;
 
-  enum hog_Camera_projection_type proj_type;
+  enum hog_ProjType proj_type;
 };
 
 #endif // HOG_CAMERA_H

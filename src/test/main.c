@@ -38,7 +38,7 @@ void update_dsr_surface(struct dsr_Surface *dsr_surface,
     .stride = sdl_surface->pitch,
 
     .pixel_format = ({
-      struct dsr_Pixel_format pixel_format = {
+      struct dsr_PixelFormat pixel_format = {
         .bits_per_pixel = format->bits_per_pixel,
         .bytes_per_pixel = format->bytes_per_pixel,
 

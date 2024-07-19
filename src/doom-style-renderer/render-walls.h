@@ -1,3 +1,4 @@
+#pragma once
 #ifndef DSR_RENDER_WALLS_H
 #define DSR_RENDER_WALLS_H
 
