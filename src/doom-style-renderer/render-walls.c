@@ -281,9 +281,12 @@ static inline void to_screen_space(const struct dsr_Surface *surface,
 }
 
 static void dsr_render_wall(struct dsr_Surface *surface,
-                            const struct dsr_Wall *wall,
-                            const struct hog_Camera *camera,
+                            const struct dsr_Wall *wall, float floor_height,
+                            float ceil_height, const struct hog_Camera *camera,
                             vec2 proj_plane_size, uint8_t wall_colour[4]) {
+  (void)floor_height;
+  (void)ceil_height;
+
   vec4 wall_world_coords[2] = { 0 };
   get_world_coords(wall->vertices[0], wall_world_coords[0]);
   get_world_coords(wall->vertices[1], wall_world_coords[1]);
@@ -411,7 +414,8 @@ void dsr_render_walls(struct dsr_Surface *surface,
   for (uint32_t i = 0; i < scene->walls.count; i++) {
     //dsr_render_wall(surface, &DA_AT(scene->walls, i), camera, proj_plane_size,
     //                (uint8_t[4]){ 255, 0, 0, 255 });
-    dsr_render_wall(surface, &DA_AT(scene->walls, i), camera, proj_plane_size,
+    dsr_render_wall(surface, &DA_AT(scene->walls, i), 0.0f, 0.0f, camera,
+                    proj_plane_size,
                     (uint8_t[4]){ DA_AT(palette, i)[0], DA_AT(palette, i)[1],
                                   DA_AT(palette, i)[2], 255 });
   }
