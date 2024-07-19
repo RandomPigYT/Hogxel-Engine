@@ -1,4 +1,4 @@
-#include "doom-style-renderer/doom-style-renderer.h"
+#include "doom-style-renderer.h"
 #include "util/dynamic_array.h"
 #include "common/camera.h"
 
@@ -14,8 +14,8 @@
 #define HEIGHT 9
 #define FACTOR 60
 
-#define PLAYER_SPEED 5.0f
-#define PLAYER_ANGULAR_SPEED 1.0f
+#define PLAYER_SPEED 12.0f
+#define PLAYER_ANGULAR_SPEED 3.5f
 
 enum direction {
   FORWARD,
@@ -81,6 +81,8 @@ int main(int argc, char **argv) {
 
   SDL_Window *window = SDL_CreateWindow("test", WIDTH * FACTOR, HEIGHT * FACTOR,
                                         SDL_WINDOW_RESIZABLE);
+  //SDL_Window *window = SDL_CreateWindow("test", WIDTH * FACTOR, HEIGHT * FACTOR,
+  //SDL_WINDOW_FULLSCREEN);
   if (!window) {
     SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create window: %s\n",
                  SDL_GetError());
@@ -112,9 +114,9 @@ int main(int argc, char **argv) {
     .aspect_ratio = (float)dsr_surface.width / (float)dsr_surface.height,
 
     .near_clipping_plane = 0.1f,
-    .far_clipping_plane = 20,
+    .far_clipping_plane = 50.0f,
 
-    .position = { 0.0f, 3.0f, -5.0f },
+    .position = { 0.0f, 5.0f, -5.0f },
     //.direction = { 0.0f, 0.0f, 1.0f },
     .direction = { dir[0], dir[1], dir[2] },
 
@@ -128,41 +130,41 @@ int main(int argc, char **argv) {
   DA_APPEND(&scene.walls,
             ((struct dsr_Wall) {
               .vertices = { 
-								{ -5.0f, 5.0f }, 
-								{ 5.0f, 5.0f }, 
+								{ -20.0f, 20.0f }, 
+								{ 20.0f, 20.0f }, 
 							}, 
 
-							.height = 5.0f,
+							.height = 10.0f,
             }));
 
   DA_APPEND(&scene.walls,
             ((struct dsr_Wall) {
               .vertices = {
-  							{ -5.1f, 5.1f },
-  							{ -5.0f, -5.0f },
+  							{ -20.0f, 20.0f },
+  							{ -20.0f, -20.0f },
   						},
 
-  						.height = 5.0f,
+  						.height = 10.0f,
             }));
 
   DA_APPEND(&scene.walls,
             ((struct dsr_Wall) {
               .vertices = {
-  							{ -5.0f, -5.0f },
-  							{ 5.0f, -5.0f },
+  							{ -20.0f, -20.0f },
+  							{ 20.0f, -20.0f },
   						},
 
-  						.height = 5.0f,
+  						.height = 10.0f,
             }));
 
   DA_APPEND(&scene.walls,
             ((struct dsr_Wall) {
               .vertices = {
-  							{ 5.0f, -5.0f },
-  							{ 5.0f, 5.0f },
+  							{ 20.0f, -20.0f },
+  							{ 20.0f, 20.0f },
   						},
 
-  						.height = 5.0f,
+  						.height = 10.0f,
             }));
 
   uint64_t current_count = SDL_GetPerformanceCounter();

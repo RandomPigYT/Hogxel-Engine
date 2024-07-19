@@ -20,9 +20,9 @@ void dsr_render(struct dsr_Surface *surface, const struct dsr_Scene *scene,
     tan(camera->fov * 0.5f) * camera->near_clipping_plane * 2;
   proj_plane_size[1] = proj_plane_size[0] / camera->aspect_ratio;
 
-  memset(surface->pixels, 0,
-         surface->width * surface->height *
-           surface->pixel_format.bytes_per_pixel);
+  //memset(surface->pixels, 0,
+  //       surface->width * surface->height *
+  //         surface->pixel_format.bytes_per_pixel);
 
   dsr_render_walls(surface, scene, camera, proj_plane_size);
 }

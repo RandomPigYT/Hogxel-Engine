@@ -11,3 +11,4 @@ clang
 -I./external
 -I./external/SDL/include
 -I./src
+-I./include
