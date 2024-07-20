@@ -10,8 +10,11 @@ TARGET := $(PROJ_BIN)/libdoom-style-renderer.so
 
 SRCS := $(shell find $(PROJ_SRC) -type  f -name "*.c")
 OBJS := $(patsubst $(PROJ_SRC)/%.c, $(PROJ_OBJ)/%.o, $(SRCS))
+DEPS := $(patsubst $(PROJ_SRC)/%.c, $(PROJ_OBJ)/%.d, $(SRCS))
+
 INCLUDES := $(shell find $(PROJ_INCLUDE) -type f -name "*.h")
 INCLUDES += $(shell find $(PROJ_SRC) -type f -name "*.h")
+INCLUDES += $(shell find $(ROOT_PATH)/$(SRC)/util -type f -name "*.h")
 
 all: $(TARGET)
 
@@ -21,9 +24,11 @@ $(TARGET): $(OBJS)
 	@$(LD) $(CFLAGS) -shared $(OBJS) -o $@ $(LDFLAGS)
 	@echo built $(TARGET)
 
-$(PROJ_OBJ)/%.o: $(PROJ_SRC)/%.c $(INCLUDES)
+-include $(DEPS)
+
+$(PROJ_OBJ)/%.o: $(PROJ_SRC)/%.c
 	@echo building $@
-	@$(CC) $(CFLAGS) -c $< -o $@
+	@$(CC) $(CFLAGS) -MD -MP -c $< -o $@
 	@echo built $@
 	@echo
 
