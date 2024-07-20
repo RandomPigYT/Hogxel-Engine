@@ -68,8 +68,12 @@ void update_dsr_surface(struct dsr_Surface *dsr_surface,
 }
 
 int main(int argc, char **argv) {
-  (void)argc;
-  (void)argv;
+  if (argc <= 1) {
+    fprintf(stderr, "Bad usage\n");
+    return EXIT_FAILURE;
+  }
+
+  char *scene_path = argv[1];
 
   SDL_SetLogPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
 
@@ -170,6 +174,13 @@ int main(int argc, char **argv) {
   uint64_t current_count = SDL_GetPerformanceCounter();
   uint64_t prev_count = 0;
   double deltatime = 0;
+
+  if (!dsr_load_scene(scene_path, &scene)) {
+    SDL_DestroySurface(surface);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+    return EXIT_FAILURE;
+  }
 
   SDL_Event e;
   while (true) {

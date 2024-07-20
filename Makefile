@@ -20,7 +20,7 @@ LDFLAGS := -Wl,-rpath=$(ROOT_PATH)/$(BIN) -L$(ROOT_PATH)/$(BIN) -lm
 
 export CC LD SRC OBJ BIN INCLUDE EXTERNAL_DIR EXTERNAL_LIBS_DIR CFLAGS LDFLAGS
 
-DIRS := $(patsubst $(SRC)/%, $(OBJ)/%, $(shell find $(SRC)/ -mindepth 1 -type d))
+OBJ_DIRS := $(patsubst $(SRC)/%, $(OBJ)/%, $(shell find $(SRC)/ -mindepth 1 -type d))
 CREATE_DIR_COMMAND := ./dirs.sh
 
 
@@ -48,7 +48,7 @@ external:
 dirs: 
 	@mkdir -p $(BIN) 
 	@mkdir -p $(OBJ)
-	@$(CREATE_DIR_COMMAND) $(DIRS)
+	@$(CREATE_DIR_COMMAND) $(OBJ_DIRS)
 
 clean:
 	-@rm -rf $(OBJ)

@@ -1,3 +1,4 @@
+#pragma once
 #ifndef UTIL_DYNAMIC_ARRAY
 #define UTIL_DYNAMIC_ARRAY
 

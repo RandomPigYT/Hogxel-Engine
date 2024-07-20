@@ -84,7 +84,7 @@ struct dsr_Scene {
 
 // Parses the file specified by "scene_source" and stores inside "scene"
 // Does not allocate any memory so, caller must provide a valid pointer
-void dsr_load_scene(const char *scene_source, struct dsr_Scene *scene);
+bool dsr_load_scene(const char *scene_path, struct dsr_Scene *scene);
 
 // The direction vector of the camera must be normalized
 void dsr_render(struct dsr_Surface *surface, const struct dsr_Scene *scene,
