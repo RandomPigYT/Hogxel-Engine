@@ -1,5 +1,6 @@
-# Wall: id x1 z1 x2 z2 is_portal
+# Note: No significant whitespace
 
+# Wall: id x1 z1 x2 z2 is_portal
 [BEGIN_WALLS]
 
 	0 -20.0 20.0 20.0 20.0 false
@@ -10,9 +11,13 @@
 [END_WALLS]
 
 # Sector: id floor_height ceiling_height walls
-
 [BEGIN_SECTORS]
 
 	0 0.0 10.0 0 1 2 3
 
 [END_SECTORS]
+
+
+
+
+# TODO: Change to a binary format once the level editor is done
