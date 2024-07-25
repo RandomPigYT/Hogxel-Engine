@@ -1,18 +1,18 @@
 # Wall: id x1 z1 x2 z2 is_portal
 
-[BEGIN WALLS]
+[BEGIN_WALLS]
 
 	0 -20.0 20.0 20.0 20.0 false
 	1 -20.0 20.0 -20.0 -20.0 false
 	2 -20.0 -20.0 20.0 -20.0 false
 	3 20.0 -20.0 20.0 20.0 false
 
-[END WALLS]
+[END_WALLS]
 
 # Sector: id floor_height ceiling_height walls
 
-[BEGIN SECTORS]
+[BEGIN_SECTORS]
 
 	0 0.0 10.0 0 1 2 3
 
-[END SECTORS]
+[END_SECTORS]
