@@ -65,6 +65,24 @@ static void next_line(struct StringView *view, const char *scene_src) {
   view->length = get_line_len(view->view, strlen(view->view));
 }
 
+static void lstrip_line(struct StringView *view) {
+  assert(view != NULL);
+  if (view->length == 0 || view->view == NULL)
+    return;
+
+  for (uint64_t i = 0; i < view->length; i++) {
+    if (view->view[i] != ' ' && view->view[i] != '\t') {
+      view->view = &view->view[i];
+      view->length = view->length - i;
+
+      return;
+    }
+  }
+
+  view->view = &view->view[view->length];
+  view->length = 0;
+}
+
 bool dsr_load_scene(const char *scene_path, struct dsr_Scene *scene) {
   (void)scene;
 
@@ -77,15 +95,21 @@ bool dsr_load_scene(const char *scene_path, struct dsr_Scene *scene) {
 
   //printf("Lines: \n");
 
-  next_line(&view, scene_src);
   int line = 0;
-  while (view.view) {
-    printf("line %d: %.*s\n", line, (int)view.length, view.view);
-
+  do {
     next_line(&view, scene_src);
+    lstrip_line(&view);
+
+    if (view.length) {
+      printf("line %d: ", line);
+      printf("%.*s\n", (int)view.length, view.view);
+    }
+
+    if (!view.length)
+      line--;
 
     line++;
-  }
+  } while (view.view);
 
   free(scene_src);
   return true;

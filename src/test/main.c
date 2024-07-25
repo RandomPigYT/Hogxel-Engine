@@ -97,15 +97,15 @@ int main(int argc, char **argv) {
   const SDL_PixelFormatDetails *format =
     SDL_GetPixelFormatDetails(surface->format);
 
-  SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
-              "\nBits per pixel: %d\nBytes per pixel: %d\n"
-              "Rmask: 0x%x\nGmask: 0x%x\nBmask: 0x%x\nAmask: 0x%x\n"
-              "Rbits: %d\nGbits: %d\nBbits: %d\nAbits: %d\n"
-              "Rshift: %d\nGshift: %d\nBshift: %d\nAshift: %d\n",
-              format->bits_per_pixel, format->bytes_per_pixel, format->Rmask,
-              format->Gmask, format->Bmask, format->Amask, format->Rbits,
-              format->Gbits, format->Bbits, format->Abits, format->Rshift,
-              format->Gshift, format->Bshift, format->Ashift);
+  //SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+  //            "\nBits per pixel: %d\nBytes per pixel: %d\n"
+  //            "Rmask: 0x%x\nGmask: 0x%x\nBmask: 0x%x\nAmask: 0x%x\n"
+  //            "Rbits: %d\nGbits: %d\nBbits: %d\nAbits: %d\n"
+  //            "Rshift: %d\nGshift: %d\nBshift: %d\nAshift: %d\n",
+  //            format->bits_per_pixel, format->bytes_per_pixel, format->Rmask,
+  //            format->Gmask, format->Bmask, format->Amask, format->Rbits,
+  //            format->Gbits, format->Bbits, format->Abits, format->Rshift,
+  //            format->Gshift, format->Bshift, format->Ashift);
 
   struct dsr_Surface dsr_surface = { 0 };
   update_dsr_surface(&dsr_surface, surface);
