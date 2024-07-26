@@ -54,3 +54,4 @@ dkms.conf
 # Misc
 val.txt
 bin/
+*.s
