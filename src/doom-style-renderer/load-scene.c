@@ -31,21 +31,32 @@ static struct Tokens tokenize(const char *src) {
 
   struct Tokens toks = { 0 };
 
-  uint32_t tok_len = 0;
+  struct StringView token = { 0 };
   while (*src) {
-    struct StringView token = { 0 };
-
     if (strstr(seperators, (char[]){ *src, 0 })) {
-      // Do stuff
+      if (token.length)
+        DA_APPEND(&toks, token);
+
+      token = (struct StringView){ 0 };
 
     } else if (strstr(special, (char[]){ *src, 0 })) {
-      // Do stuff
+      if (token.length)
+        DA_APPEND(&toks, token);
+
+      token.view = src;
+      token.length = 1;
+      DA_APPEND(&toks, token);
+
+      token = (struct StringView){ 0 };
 
     } else {
-      // Do stuff
+      if (token.view == NULL)
+        token.view = src;
+
+      token.length++;
     }
 
-    src += tok_len;
+    src++;
   }
 
   return toks;
@@ -60,6 +71,28 @@ bool dsr_load_scene(const char *scene_path, struct dsr_Scene *scene) {
   }
 
   struct Tokens toks = tokenize(scene_src);
+
+  const int toks_per_line = 7;
+
+  printf("Tokens {\n");
+  for (uint32_t i = 0; i < toks.count; i++) {
+    if (i % toks_per_line == 1 || i == 0) {
+      printf("  ");
+    }
+
+    if (*DA_AT(toks, i).view == '\n') {
+      printf("\\n, ");
+    } else {
+      printf("%.*s, ", (int)DA_AT(toks, i).length, DA_AT(toks, i).view);
+    }
+
+    if ((i % toks_per_line == 0 && i != 0) || i == toks.count - 1) {
+      if (i != toks.count - 1)
+        printf("\n");
+      printf("\n");
+    }
+  }
+  printf("}\n");
 
   DA_FREE(&toks);
   free(scene_src);
