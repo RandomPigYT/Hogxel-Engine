@@ -81,9 +81,9 @@ bool dsr_load_scene(const char *scene_path, struct dsr_Scene *scene) {
     }
 
     if (*DA_AT(toks, i).view == '\n') {
-      printf("\\n, ");
+      printf("\"\\n\", ");
     } else {
-      printf("%.*s, ", (int)DA_AT(toks, i).length, DA_AT(toks, i).view);
+      printf("\"%.*s\", ", (int)DA_AT(toks, i).length, DA_AT(toks, i).view);
     }
 
     if ((i % toks_per_line == 0 && i != 0) || i == toks.count - 1) {

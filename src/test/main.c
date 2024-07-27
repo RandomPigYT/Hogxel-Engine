@@ -321,6 +321,7 @@ int main(int argc, char **argv) {
 
   SDL_DestroySurface(surface);
   SDL_DestroyWindow(window);
+  DA_FREE(&scene.walls);
   SDL_Quit();
   return 0;
 }
