@@ -1,7 +1,7 @@
 # Note: No significant whitespace
 
 # Wall: id x1 z1 x2 z2 is_portal
-[BEGIN_WALLS]
+[BEGIN_WALLSs]
 
 	0 -20.0 20.0 20.0 20.0 false
 	1 -20.0 20.0 -20.0 -20.0 false

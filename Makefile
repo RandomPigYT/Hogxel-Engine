@@ -27,7 +27,7 @@ CREATE_DIR_COMMAND := ./dirs.sh
 
 PROJECTS := test doom-style-renderer.so 
 
-.PHONY: all dirs clean external
+.PHONY: all dirs clean external run
 
 all: dirs $(PROJECTS)
 
@@ -54,3 +54,6 @@ dirs:
 clean:
 	-@rm -rf $(OBJ)
 	-@rm -rf $(BIN)
+
+run: bin/test
+	./bin/test "./assets/scenes/test-scene.dsrs"
