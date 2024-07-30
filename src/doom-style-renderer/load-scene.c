@@ -1,6 +1,6 @@
-#include "doom-style-renderer.h"
 #define UTIL_FILE_IO_IMPLEMENTATION
 #include "util/fileIO.h"
+#include "doom-style-renderer.h"
 #include "util/dynamic_array.h"
 
 #include <stdlib.h>
@@ -18,7 +18,7 @@ enum BlockType {
   BLOCK_TYPE_NONE = 0,
 
   BLOCK_TYPE_WALLS,
-  BLOCK_TYPE_SCENES,
+  BLOCK_TYPE_SECTORS,
 
   BLOCK_COUNT,
 };
@@ -119,18 +119,22 @@ static enum ParseErrors parse_block_guard(const struct Tokens *tokens,
     const struct StringView *tok_view = &DA_AT(*tokens, index + 1);
 
     char *tmp = malloc(tok_view->length + 1);
+    assert(tmp != NULL && "Failed to allocate memory");
+
     memcpy(tmp, tok_view->view, tok_view->length);
     tmp[tok_view->length] = 0;
 
-    if (strcmp(tmp, block_guards[i])) {
+    if (strcmp(tmp, block_guards[i]) == 0) {
       *guard = i;
+
+      free(tmp);
       break;
     }
 
     free(tmp);
   }
 
-  if (guard == BLOCK_GUARD_NONE) {
+  if (*guard == BLOCK_GUARD_NONE) {
     *error_index = index + 1;
     return PARSE_ERROR_UNEXPECTED_TOKEN;
   }
@@ -144,7 +148,7 @@ static enum ParseErrors parse_block_guard(const struct Tokens *tokens,
 }
 
 static enum ParseErrors parse(const struct Tokens *tokens,
-                              struct dsr_Scene *scene, uint64_t *error_loc) {
+                              struct dsr_Scene *scene, const char **error_loc) {
   bool is_comment = false;
   enum BlockType block_type = BLOCK_TYPE_NONE;
 
@@ -166,14 +170,44 @@ static enum ParseErrors parse(const struct Tokens *tokens,
     }
 
     if (block_type == BLOCK_TYPE_NONE) {
-      if (strstr(special, DA_AT(*tokens, i).view)) {
+      if (strstr(special, (char[]){ DA_AT(*tokens, i).view[0], 0 })) {
         switch (DA_AT(*tokens, i).view[0]) {
           case '[': {
             enum BlockGuard guard = BLOCK_GUARD_NONE;
             uint64_t error;
-            if (parse_block_guard(tokens, i, &guard, &error) !=
+
+            enum ParseErrors error_type;
+            if ((error_type = parse_block_guard(tokens, i, &guard, &error)) !=
                 PARSE_ERROR_NONE) {
-              printf("Error! %ld\n", error);
+              printf("Error!\n");
+              *error_loc =
+                DA_AT(*tokens, error).view + (DA_AT(*tokens, error).length - 1);
+              return error_type;
+            }
+
+            switch (guard) {
+              case BEGIN_WALLS: {
+                block_type = BLOCK_TYPE_WALLS;
+              } break;
+
+              case BEGIN_SECTORS: {
+                block_type = BLOCK_TYPE_SECTORS;
+              } break;
+
+              case END_WALLS:
+              case END_SECTORS: {
+                if (block_type == BLOCK_TYPE_NONE) {
+                  *error_loc = DA_AT(*tokens, i).view;
+                  return PARSE_ERROR_UNEXPECTED_TOKEN;
+                }
+
+                block_type = BLOCK_TYPE_NONE;
+              } break;
+
+              default: {
+                *error_loc = DA_AT(*tokens, i).view;
+                return PARSE_ERROR_UNEXPECTED_TOKEN;
+              } break;
             }
 
           } break;
@@ -181,6 +215,9 @@ static enum ParseErrors parse(const struct Tokens *tokens,
           case '#': {
             is_comment = true;
           } break;
+
+          case ']':
+            break;
 
           default: {
             return PARSE_ERROR_UNEXPECTED_TOKEN;
@@ -191,7 +228,7 @@ static enum ParseErrors parse(const struct Tokens *tokens,
     } else if (block_type == BLOCK_TYPE_WALLS) {
       /* do stuff */
 
-    } else if (block_type == BLOCK_TYPE_SCENES) {
+    } else if (block_type == BLOCK_TYPE_SECTORS) {
       /* do stuff */
     }
   }
@@ -232,8 +269,8 @@ bool dsr_load_scene(const char *scene_path, struct dsr_Scene *scene) {
   printf("}\n");
   printf("\nblock guards count: %d\n", BLOCK_GUARDS_COUNT);
 
-  uint64_t error_loc = 0;
-  parse(&toks, scene, &error_loc);
+  const char *error_loc = 0;
+  printf("Parse result: %d\n", parse(&toks, scene, &error_loc));
 
   DA_FREE(&toks);
   free(scene_src);

@@ -1,8 +1,10 @@
-#include "doom-style-renderer.h"
 #include "render-walls.h"
+
+#include "doom-style-renderer.h"
 #include "util/dynamic_array.h"
 
 #include <cglm/include/cglm/cglm.h>
+
 #include <stdio.h>
 #include <stdbool.h>
 

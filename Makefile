@@ -14,7 +14,7 @@ INCLUDE := include
 EXTERNAL_DIR := $(ROOT_PATH)/external
 EXTERNAL_LIBS_DIR := $(ROOT_PATH)/external-libs
 
-CFLAGS := -I$(ROOT_PATH)/$(SRC) -I$(EXTERNAL_DIR) -I$(ROOT_PATH)/$(INCLUDE)
+CFLAGS := -I$(ROOT_PATH)/$(SRC) -isystem $(EXTERNAL_DIR) -I$(ROOT_PATH)/$(INCLUDE)
 LDFLAGS := -Wl,-rpath=$(ROOT_PATH)/$(BIN) -L$(ROOT_PATH)/$(BIN) -lm
 
 GENERATE_ASM := 1

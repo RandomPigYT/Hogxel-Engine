@@ -1,5 +1,6 @@
-#include "doom-style-renderer.h"
 #include "render-walls.h"
+
+#include "doom-style-renderer.h"
 
 #include <stdio.h>
 #include <string.h>
