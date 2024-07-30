@@ -66,6 +66,8 @@ struct dsr_Surface {
 };
 
 struct dsr_Wall {
+  uint32_t id;
+
   vec2 vertices[2]; /* The components represent the 
 											 x and z coordinates respectively */
   float height;
@@ -74,12 +76,15 @@ struct dsr_Wall {
 };
 
 struct dsr_Sector {
+  uint32_t id;
+
   float floor_height, ceil_height;
   DA_TYPE(uint32_t) walls;
 };
 
 struct dsr_Scene {
   DA_TYPE(struct dsr_Wall) walls;
+  DA_TYPE(struct dsr_Sector) sectors;
 };
 
 // Parses the file specified by "scene_source" and stores inside "scene"
