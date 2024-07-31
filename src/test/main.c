@@ -131,46 +131,6 @@ int main(int argc, char **argv) {
     .walls = { 0 },
   };
 
-  DA_APPEND(&scene.walls,
-            ((struct dsr_Wall) {
-              .vertices = { 
-								{ -20.0f, 20.0f }, 
-								{ 20.0f, 20.0f }, 
-							}, 
-
-							.height = 10.0f,
-            }));
-
-  DA_APPEND(&scene.walls,
-            ((struct dsr_Wall) {
-              .vertices = {
-  							{ -20.0f, 20.0f },
-  							{ -20.0f, -20.0f },
-  						},
-
-  						.height = 10.0f,
-            }));
-
-  DA_APPEND(&scene.walls,
-            ((struct dsr_Wall) {
-              .vertices = {
-  							{ -20.0f, -20.0f },
-  							{ 20.0f, -20.0f },
-  						},
-
-  						.height = 10.0f,
-            }));
-
-  DA_APPEND(&scene.walls,
-            ((struct dsr_Wall) {
-              .vertices = {
-  							{ 20.0f, -20.0f },
-  							{ 20.0f, 20.0f },
-  						},
-
-  						.height = 10.0f,
-            }));
-
   uint64_t current_count = SDL_GetPerformanceCounter();
   uint64_t prev_count = 0;
   double deltatime = 0;

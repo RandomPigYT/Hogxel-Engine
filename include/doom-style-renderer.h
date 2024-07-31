@@ -73,13 +73,17 @@ struct dsr_Wall {
   float height;
 
   bool is_portal;
+
+  uint32_t shared_with[2]; // Indices of sectors that share this wall
+  uint8_t shared_count;
 };
 
 struct dsr_Sector {
   uint32_t id;
 
   float floor_height, ceil_height;
-  DA_TYPE(uint32_t) walls;
+
+  DA_TYPE(uint32_t) walls; // Indices
 };
 
 struct dsr_Scene {

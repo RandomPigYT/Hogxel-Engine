@@ -220,6 +220,20 @@ Error:
   return error_type__;
 }
 
+static inline uint64_t get_line_length(const struct Tokens *tokens,
+                                       uint64_t index) {
+  uint64_t line_length = 0;
+  for (uint64_t i = index; i < tokens->count; i++) {
+    if (DA_AT(*tokens, i).view[0] == '\n') {
+      break;
+    }
+
+    line_length++;
+  }
+
+  return line_length;
+}
+
 // 'index' points to the start of the line
 static enum ParseErrors parse_wall(const struct Tokens *tokens, uint64_t index,
                                    struct dsr_Wall *wall,
@@ -230,18 +244,9 @@ static enum ParseErrors parse_wall(const struct Tokens *tokens, uint64_t index,
   uint64_t error_index__ = 0;
   enum ParseErrors error_type__ = PARSE_ERROR_NONE;
 
-  uint64_t line_length = 0;
-  for (uint64_t i = index; i < tokens->count; i++) {
-    if (DA_AT(*tokens, i).view[0] == '\n') {
-      break;
-    }
+  uint64_t line_length = get_line_length(tokens, index);
 
-    line_length++;
-  }
-
-  if (line_length == 0) {
-    return PARSE_ERROR_NONE;
-  }
+  assert(line_length != 0);
 
   if (line_length != WALL_FIELDS_COUNT) {
     error_index__ = index + line_length - 1;
@@ -349,6 +354,44 @@ static enum ParseErrors parse_wall(const struct Tokens *tokens, uint64_t index,
     }
   }
 
+  wall->shared_count = 0;
+
+  return PARSE_ERROR_NONE;
+
+Error:
+  if (error_index != NULL) {
+    *error_index = error_index__;
+  }
+
+  return error_type__;
+}
+
+struct UnmatchedSectors {
+  DA_TYPE(struct {
+    uint32_t sector_index;
+    uint32_t wall_id;
+  })
+  items;
+};
+
+// 'index' points to the start of the line
+static enum ParseErrors parse_sector(const struct Tokens *tokens,
+                                     uint64_t index, struct dsr_Sector *sector,
+                                     struct UnmatchedSectors *unmatched,
+                                     uint64_t *error_index, uint64_t *inc_by) {
+  assert(tokens != NULL);
+  assert(sector != NULL);
+  assert(inc_by != NULL);
+
+  uint64_t error_index__ = 0;
+  enum ParseErrors error_type__ = PARSE_ERROR_NONE;
+
+  uint64_t line_length = get_line_length(tokens, index);
+
+  assert(line_length != 0);
+
+  return PARSE_ERROR_NONE;
+
 Error:
   if (error_index != NULL) {
     *error_index = error_index__;
@@ -359,12 +402,23 @@ Error:
 
 static enum ParseErrors
 get_block_type(enum BlockGuard guard, enum BlockType old, enum BlockType *new) {
+  printf("Block type: %d\n", old);
+  printf("Block guard: %s\n\n", block_guards[guard]);
+
   switch (guard) {
     case BEGIN_WALLS: {
+      if (old != BLOCK_TYPE_NONE) {
+        return PARSE_ERROR_UNEXPECTED_TOKEN;
+      }
+
       *new = BLOCK_TYPE_WALLS;
     } break;
 
     case BEGIN_SECTORS: {
+      if (old != BLOCK_TYPE_NONE) {
+        return PARSE_ERROR_UNEXPECTED_TOKEN;
+      }
+
       *new = BLOCK_TYPE_SECTORS;
     } break;
 
@@ -386,13 +440,8 @@ get_block_type(enum BlockGuard guard, enum BlockType old, enum BlockType *new) {
   return PARSE_ERROR_NONE;
 }
 
-// TODO: Refactor error handling to match the other functions
 static enum ParseErrors parse(const struct Tokens *tokens,
-                              struct dsr_Scene *scene, const char **error_loc) {
-  (void)scene;
-
-  assert(error_loc != NULL);
-
+                              struct dsr_Scene *scene, uint64_t *error_index) {
 #ifndef RELEASE
 
   for (uint64_t i = 0; i < tokens->count; i++) {
@@ -402,8 +451,13 @@ static enum ParseErrors parse(const struct Tokens *tokens,
 
 #endif
 
+  uint64_t error_index__ = 0;
+  enum ParseErrors error_type__ = PARSE_ERROR_NONE;
+
   bool is_comment = false;
   enum BlockType block_type = BLOCK_TYPE_NONE;
+
+  struct UnmatchedSectors unmatched = { 0 };
 
   uint64_t inc_by = 1;
   for (uint64_t i = 0; i < tokens->count; i += inc_by) {
@@ -425,26 +479,24 @@ static enum ParseErrors parse(const struct Tokens *tokens,
       switch (tok->view[0]) {
         case '[': {
           enum BlockGuard guard = BLOCK_GUARD_NONE;
-          uint64_t error_index;
 
           {
-            enum ParseErrors error_type =
-              parse_block_guard(tokens, i, &guard, &error_index);
-            if (error_type != PARSE_ERROR_NONE) {
+            error_type__ = parse_block_guard(tokens, i, &guard, &error_index__);
+
+            if (error_type__ != PARSE_ERROR_NONE) {
               printf("Error!\n");
-              *error_loc = DA_AT(*tokens, error_index).view +
-                           (DA_AT(*tokens, error_index).length - 1);
-              return error_type;
+              goto Error;
             }
           }
 
           {
-            enum ParseErrors error_type =
-              get_block_type(guard, block_type, &block_type);
-            if (error_type != PARSE_ERROR_NONE) {
-              printf("Error from header, type: %s\n", parse_errors[error_type]);
-              *error_loc = tok->view;
-              return error_type;
+            error_type__ = get_block_type(guard, block_type, &block_type);
+
+            if (error_type__ != PARSE_ERROR_NONE) {
+              printf("Error from header, type: %s\n",
+                     parse_errors[error_type__]);
+              error_index__ = i;
+              goto Error;
             }
           }
 
@@ -456,8 +508,9 @@ static enum ParseErrors parse(const struct Tokens *tokens,
         } break;
 
         default: {
-          *error_loc = tok->view;
-          return PARSE_ERROR_UNEXPECTED_TOKEN;
+          error_index__ = i;
+          error_type__ = PARSE_ERROR_UNEXPECTED_TOKEN;
+          goto Error;
         }
       }
 
@@ -467,15 +520,10 @@ static enum ParseErrors parse(const struct Tokens *tokens,
     if (block_type == BLOCK_TYPE_WALLS) {
       struct dsr_Wall wall = { 0 };
 
-      uint64_t error_index = 0;
-      enum ParseErrors error_type = parse_wall(tokens, i, &wall, &error_index);
+      error_type__ = parse_wall(tokens, i, &wall, &error_index__);
 
-      if (error_type != PARSE_ERROR_NONE) {
-        *error_loc = error_type == PARSE_ERROR_UNEXPECTED_TOKEN
-                       ? (DA_AT(*tokens, error_index).view +
-                          (DA_AT(*tokens, error_index).length - 1))
-                       : DA_AT(*tokens, error_index).view;
-        return error_type;
+      if (error_type__ != PARSE_ERROR_NONE) {
+        goto Error;
       }
       printf("wall {\n"
              "  .id = %d,\n\n"
@@ -489,17 +537,30 @@ static enum ParseErrors parse(const struct Tokens *tokens,
              wall.vertices[1][0], wall.vertices[1][1],
              wall.is_portal ? "true" : "false");
 
+      wall.height = 10;
+      DA_APPEND(&scene->walls, wall);
+
       inc_by = WALL_FIELDS_COUNT;
     } else if (block_type == BLOCK_TYPE_SECTORS) {
       /* do stuff */
 
     } else {
-      *error_loc = tok->view;
-      return PARSE_ERROR_UNEXPECTED_TOKEN;
+      error_index__ = i;
+      error_type__ = PARSE_ERROR_UNEXPECTED_TOKEN;
+      goto Error;
     }
   }
 
   return PARSE_ERROR_NONE;
+
+Error:
+  if (error_index != NULL) {
+    *error_index = error_index__;
+  }
+
+  DA_FREE(&unmatched.items);
+
+  return error_type__;
 }
 
 bool dsr_load_scene(const char *scene_path, struct dsr_Scene *scene) {
@@ -535,12 +596,14 @@ bool dsr_load_scene(const char *scene_path, struct dsr_Scene *scene) {
   printf("}\n");
   printf("\nblock guards count: %d\n", BLOCK_GUARDS_COUNT);
 
-  const char *error_loc = 0;
-  printf("Parse result: %d\n", parse(&toks, scene, &error_loc));
+  uint64_t error_index = 0;
+  auto res = parse(&toks, scene, &error_index);
+  printf("Parse result: %d\n", res);
 
   DA_FREE(&toks);
   free(scene_src);
-  return true;
+
+  return res == PARSE_ERROR_NONE;
 }
 
 /*
