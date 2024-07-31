@@ -108,16 +108,28 @@ enum WallFields {
 
 };
 
+/*
+ * The values of 'enum SectorBuffers' must match the offsets of the fields
+ * of 'struct dsr_Sector'.
+ */
 enum SectorFields {
 
   SECTOR_FIELD_ID,
-  SECTOR_FIELD_FLOOR_HEIGHT = 1,
-  SECTOR_FIELD_CEIL_HEIGHT = 2,
+  SECTOR_FIELD_FLOOR_HEIGHT,
+  SECTOR_FIELD_CEIL_HEIGHT,
 
   /* WALL1 WALL2 ... */
 
   SECTOR_FIELDS_COUNT,
 
+};
+
+struct SectorBuffers {
+  DA_TYPE(struct {
+    uint32_t sector_index;
+    uint32_t wall_id;
+  })
+  walls;
 };
 
 // Returned dynamic array must be freed by caller
@@ -234,6 +246,79 @@ static inline uint64_t get_line_length(const struct Tokens *tokens,
   return line_length;
 }
 
+static uint32_t get_uint32(const struct Tokens *tokens, uint64_t index,
+                           enum ParseErrors *error_type,
+                           uint64_t *error_index) {
+  struct StringView *tok = &DA_AT(*tokens, index);
+
+  char *tmp = malloc(tok->length + 1);
+  assert(tmp != NULL && "Failed to allocate memory");
+
+  memcpy(tmp, tok->view, tok->length);
+  tmp[tok->length] = 0;
+
+  errno = 0;
+
+  char *end = NULL;
+  int64_t res = strtoll(tmp, &end, 10);
+
+  if (*end != 0) {
+    free(tmp);
+    *error_index = index;
+    *error_type = PARSE_ERROR_UNEXPECTED_TOKEN;
+
+    return 0;
+  }
+
+  if (res < 0 || errno == ERANGE) {
+    free(tmp);
+    *error_index = index;
+    *error_type = PARSE_ERROR_ID_OUT_OF_RANGE;
+
+    return 0;
+  }
+
+  free(tmp);
+
+  return res;
+}
+
+static float get_float(const struct Tokens *tokens, uint64_t index,
+                       enum ParseErrors *error_type, uint64_t *error_index) {
+  struct StringView *tok = &DA_AT(*tokens, index);
+
+  char *tmp = malloc(tok->length + 1);
+  assert(tmp != NULL && "Failed to allocate memory");
+
+  memcpy(tmp, tok->view, tok->length);
+  tmp[tok->length] = 0;
+
+  errno = 0;
+
+  char *end = NULL;
+  float res = strtof(tmp, &end);
+
+  if (*end != 0) {
+    free(tmp);
+    *error_index = index;
+    *error_type = PARSE_ERROR_UNEXPECTED_TOKEN;
+
+    return NAN;
+  }
+
+  if (errno == ERANGE) {
+    free(tmp);
+    *error_index = index;
+    *error_type = PARSE_ERROR_FLOAT_OUT_OF_RANGE;
+
+    return NAN;
+  }
+
+  free(tmp);
+
+  return res;
+}
+
 // 'index' points to the start of the line
 static enum ParseErrors parse_wall(const struct Tokens *tokens, uint64_t index,
                                    struct dsr_Wall *wall,
@@ -256,40 +341,14 @@ static enum ParseErrors parse_wall(const struct Tokens *tokens, uint64_t index,
     goto Error;
   }
 
-  // Wall id
+  // Wall ID
   {
-    struct StringView *tok = &DA_AT(*tokens, index + WALL_FIELD_ID);
+    wall->id =
+      get_uint32(tokens, index + WALL_FIELD_ID, &error_type__, &error_index__);
 
-    char *tmp = malloc(tok->length + 1);
-    assert(tmp != NULL && "Failed to allocate memory");
-
-    memcpy(tmp, tok->view, tok->length);
-    tmp[tok->length] = 0;
-
-    errno = 0;
-
-    char *end = NULL;
-    int64_t wall_id = strtoll(tmp, &end, 10);
-
-    if (*end != 0) {
-      free(tmp);
-      error_index__ = index;
-      error_type__ = PARSE_ERROR_UNEXPECTED_TOKEN;
-
+    if (error_type__ != PARSE_ERROR_NONE) {
       goto Error;
     }
-
-    if (wall_id < 0 || errno == ERANGE) {
-      free(tmp);
-      error_index__ = index;
-      error_type__ = PARSE_ERROR_ID_OUT_OF_RANGE;
-
-      goto Error;
-    }
-
-    wall->id = wall_id;
-
-    free(tmp);
   }
 
   // Wall vertices
@@ -298,36 +357,12 @@ static enum ParseErrors parse_wall(const struct Tokens *tokens, uint64_t index,
 
     // Fetch vertices from source
     for (uint8_t i = WALL_FIELD_X1; i <= WALL_FIELD_Z2; i++) {
-      struct StringView *tok = &DA_AT(*tokens, index + i);
+      vertices[i - WALL_FIELD_X1] =
+        get_float(tokens, index + i, &error_type__, &error_index__);
 
-      char *tmp = malloc(tok->length + 1);
-      assert(tmp != NULL && "Failed to allocate memory");
-
-      memcpy(tmp, tok->view, tok->length);
-      tmp[tok->length] = 0;
-
-      errno = 0;
-
-      char *end = NULL;
-      vertices[i - WALL_FIELD_X1] = strtof(tmp, &end);
-
-      if (*end != 0) {
-        free(tmp);
-        error_index__ = index + i;
-        error_type__ = PARSE_ERROR_UNEXPECTED_TOKEN;
-
+      if (error_type__ != PARSE_ERROR_NONE) {
         goto Error;
       }
-
-      if (errno == ERANGE) {
-        free(tmp);
-        error_index__ = index + i;
-        error_type__ = PARSE_ERROR_FLOAT_OUT_OF_RANGE;
-
-        goto Error;
-      }
-
-      free(tmp);
     }
 
     wall->vertices[0][0] = vertices[0];
@@ -366,18 +401,10 @@ Error:
   return error_type__;
 }
 
-struct UnmatchedSectors {
-  DA_TYPE(struct {
-    uint32_t sector_index;
-    uint32_t wall_id;
-  })
-  items;
-};
-
 // 'index' points to the start of the line
 static enum ParseErrors parse_sector(const struct Tokens *tokens,
                                      uint64_t index, struct dsr_Sector *sector,
-                                     struct UnmatchedSectors *unmatched,
+                                     struct SectorBuffers *sector_buffers,
                                      uint64_t *error_index, uint64_t *inc_by) {
   assert(tokens != NULL);
   assert(sector != NULL);
@@ -389,6 +416,12 @@ static enum ParseErrors parse_sector(const struct Tokens *tokens,
   uint64_t line_length = get_line_length(tokens, index);
 
   assert(line_length != 0);
+
+  if (line_length < SECTOR_FIELDS_COUNT) {
+    error_index__ = index + line_length - 1;
+    error_type__ = PARSE_ERROR_EXPECTED_TOKEN;
+    goto Error;
+  }
 
   return PARSE_ERROR_NONE;
 
@@ -457,7 +490,7 @@ static enum ParseErrors parse(const struct Tokens *tokens,
   bool is_comment = false;
   enum BlockType block_type = BLOCK_TYPE_NONE;
 
-  struct UnmatchedSectors unmatched = { 0 };
+  struct SectorBuffers sector_buffers = { 0 };
 
   uint64_t inc_by = 1;
   for (uint64_t i = 0; i < tokens->count; i += inc_by) {
@@ -558,7 +591,7 @@ Error:
     *error_index = error_index__;
   }
 
-  DA_FREE(&unmatched.items);
+  DA_FREE(&sector_buffers.walls);
 
   return error_type__;
 }
