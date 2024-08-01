@@ -63,12 +63,13 @@ static const char *block_guards[] = {
 
 #undef BLOCKS_GUARDS
 
-#define PARSE_ERRORS()							\
-  X(PARSE_ERROR_NONE)								\
-  X(PARSE_ERROR_EXPECTED_TOKEN)			\
-  X(PARSE_ERROR_UNEXPECTED_TOKEN)		\
-	X(PARSE_ERROR_ID_OUT_OF_RANGE)		\
-	X(PARSE_ERROR_FLOAT_OUT_OF_RANGE) 
+#define PARSE_ERRORS()							 \
+  X(PARSE_ERROR_NONE)								 \
+  X(PARSE_ERROR_EXPECTED_TOKEN)			 \
+  X(PARSE_ERROR_UNEXPECTED_TOKEN)		 \
+	X(PARSE_ERROR_ID_OUT_OF_RANGE)		 \
+	X(PARSE_ERROR_FLOAT_OUT_OF_RANGE)  \
+	X(PARSE_ERROR_UNDEFINED_REFERENCE) 
 
 #define X(name) name,
 enum ParseErrors {
@@ -403,7 +404,8 @@ Error:
 
 // 'index' points to the start of the line
 static enum ParseErrors parse_sector(const struct Tokens *tokens,
-                                     uint64_t index, struct dsr_Sector *sector,
+                                     uint64_t index, uint32_t sector_index,
+                                     struct dsr_Sector *sector,
                                      struct SectorBuffers *sector_buffers,
                                      uint64_t *error_index, uint64_t *inc_by) {
   assert(tokens != NULL);
@@ -422,6 +424,53 @@ static enum ParseErrors parse_sector(const struct Tokens *tokens,
     error_type__ = PARSE_ERROR_EXPECTED_TOKEN;
     goto Error;
   }
+
+  // Sector ID
+  {
+    sector->id = get_uint32(tokens, index + SECTOR_FIELD_ID, &error_type__,
+                            &error_index__);
+
+    if (error_type__ != PARSE_ERROR_NONE) {
+      goto Error;
+    }
+  }
+
+  // Floor height
+  {
+    sector->floor_height = get_float(tokens, index + SECTOR_FIELD_FLOOR_HEIGHT,
+                                     &error_type__, &error_index__);
+
+    if (error_type__ != PARSE_ERROR_NONE) {
+      goto Error;
+    }
+  }
+
+  // Ceiling height
+  {
+    sector->ceil_height = get_float(tokens, index + SECTOR_FIELD_CEIL_HEIGHT,
+                                    &error_type__, &error_index__);
+
+    if (error_type__ != PARSE_ERROR_NONE) {
+      goto Error;
+    }
+  }
+
+  // Walls
+  for (uint32_t i = SECTOR_FIELDS_COUNT; i < line_length; i++) {
+    typedef typeof(*sector_buffers->walls.items) WallRecord;
+
+    WallRecord tmp = { 0 };
+    tmp.sector_index = sector_index;
+    tmp.wall_id = get_uint32(tokens, index + i, &error_type__, &error_index__);
+
+    if (error_type__ != PARSE_ERROR_NONE) {
+      goto Error;
+    }
+
+    DA_APPEND(&sector_buffers->walls, tmp);
+  }
+
+  *inc_by = line_length;
 
   return PARSE_ERROR_NONE;
 
@@ -575,7 +624,16 @@ static enum ParseErrors parse(const struct Tokens *tokens,
 
       inc_by = WALL_FIELDS_COUNT;
     } else if (block_type == BLOCK_TYPE_SECTORS) {
-      /* do stuff */
+      struct dsr_Sector sector = { 0 };
+
+      error_type__ = parse_sector(tokens, i, scene->sectors.count, &sector,
+                                  &sector_buffers, &error_index__, &inc_by);
+
+      if (error_type__ != PARSE_ERROR_NONE) {
+        goto Error;
+      }
+
+      DA_APPEND(&scene->sectors, sector);
 
     } else {
       error_index__ = i;
@@ -583,6 +641,45 @@ static enum ParseErrors parse(const struct Tokens *tokens,
       goto Error;
     }
   }
+
+  for (uint64_t i = 0; i < sector_buffers.walls.count; i++) {
+    auto tmp = &DA_AT(sector_buffers.walls, i);
+
+    bool defined = false;
+    for (uint32_t j = 0; j < scene->walls.count; j++) {
+      if (tmp->wall_id == DA_AT(scene->walls, j).id) {
+        DA_APPEND(&DA_AT(scene->sectors, tmp->sector_index).walls, j);
+        defined = true;
+      }
+    }
+
+    if (!defined) {
+      error_type__ = PARSE_ERROR_UNDEFINED_REFERENCE;
+      goto Error;
+    }
+  }
+
+  for (uint32_t i = 0; i < scene->sectors.count; i++) {
+    struct dsr_Sector *sector = &DA_AT(scene->sectors, i);
+
+    printf("Sector {\n"
+           "  .id = %d,\n\n"
+
+           "  .floor_height = %f,\n"
+           "  .ceil_height = %f,\n\n"
+
+           "  .walls = {\n",
+           sector->id, sector->floor_height, sector->ceil_height);
+
+    for (uint32_t j = 0; j < sector->walls.count; j++) {
+      printf("    %d,\n", DA_AT(sector->walls, j));
+    }
+
+    printf("  },\n"
+           "}\n\n");
+  }
+
+  DA_FREE(&sector_buffers.walls);
 
   return PARSE_ERROR_NONE;
 
