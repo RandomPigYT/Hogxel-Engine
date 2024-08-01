@@ -66,11 +66,7 @@ struct dsr_Surface {
 };
 
 struct dsr_Wall {
-  uint32_t id;
-
-  vec2 vertices[2]; /* The components represent the 
-											 x and z coordinates respectively */
-  float height;
+  uint64_t vertices[2]; // Vertex indices
 
   bool is_portal;
 
@@ -79,14 +75,13 @@ struct dsr_Wall {
 };
 
 struct dsr_Sector {
-  uint32_t id;
-
   float floor_height, ceil_height;
 
   DA_TYPE(uint32_t) walls; // Indices
 };
 
 struct dsr_Scene {
+  DA_TYPE(vec2) vertices;
   DA_TYPE(struct dsr_Wall) walls;
   DA_TYPE(struct dsr_Sector) sectors;
 };

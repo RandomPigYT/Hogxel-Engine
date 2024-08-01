@@ -3,6 +3,8 @@
 #include "doom-style-renderer.h"
 #include "util/dynamic_array.h"
 
+#include "cglm/include/cglm/cglm.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -19,6 +21,7 @@ enum BlockType {
 
   BLOCK_TYPE_NONE = 0,
 
+  BLOCK_TYPE_VERTS,
   BLOCK_TYPE_WALLS,
   BLOCK_TYPE_SECTORS,
 
@@ -35,15 +38,27 @@ struct Tokens {
 static const char seperators[] = " \t"; // Removed
 static const char special[] = "[]#\n"; // Preseverved as tokens
 
-// clang-format off
-
 #define BLOCKS_GUARDS() \
   X(BLOCK_GUARD_NONE)   \
+                        \
+  X(BEGIN_VERTS)        \
+  X(END_VERTS)          \
+                        \
   X(BEGIN_WALLS)        \
   X(END_WALLS)          \
+                        \
   X(BEGIN_SECTORS)      \
   X(END_SECTORS)
 
+#define PARSE_ERRORS()              \
+  X(PARSE_ERROR_NONE)               \
+  X(PARSE_ERROR_EXPECTED_TOKEN)     \
+  X(PARSE_ERROR_UNEXPECTED_TOKEN)   \
+  X(PARSE_ERROR_ID_OUT_OF_RANGE)    \
+  X(PARSE_ERROR_FLOAT_OUT_OF_RANGE) \
+  X(PARSE_ERROR_UNDEFINED_REFERENCE)
+
+// clang-format off
 
 #define X(name) name,
 enum BlockGuard {
@@ -61,15 +76,6 @@ static const char *block_guards[] = {
 };
 #undef X
 
-#undef BLOCKS_GUARDS
-
-#define PARSE_ERRORS()							 \
-  X(PARSE_ERROR_NONE)								 \
-  X(PARSE_ERROR_EXPECTED_TOKEN)			 \
-  X(PARSE_ERROR_UNEXPECTED_TOKEN)		 \
-	X(PARSE_ERROR_ID_OUT_OF_RANGE)		 \
-	X(PARSE_ERROR_FLOAT_OUT_OF_RANGE)  \
-	X(PARSE_ERROR_UNDEFINED_REFERENCE) 
 
 #define X(name) name,
 enum ParseErrors {
@@ -87,7 +93,6 @@ static const char *parse_errors[] = {
 };
 #undef X
 
-#undef PARSE_ERRORS
 // clang-format on
 
 /*
@@ -96,12 +101,8 @@ static const char *parse_errors[] = {
  */
 enum WallFields {
 
-  WALL_FIELD_ID,
-
-  WALL_FIELD_X1,
-  WALL_FIELD_Z1,
-  WALL_FIELD_X2,
-  WALL_FIELD_Z2,
+  WALL_FIELD_VERT1,
+  WALL_FIELD_VERT2,
 
   WALL_FIELD_IS_PORTAL,
 
@@ -115,22 +116,13 @@ enum WallFields {
  */
 enum SectorFields {
 
-  SECTOR_FIELD_ID,
   SECTOR_FIELD_FLOOR_HEIGHT,
   SECTOR_FIELD_CEIL_HEIGHT,
 
-  /* WALL1 WALL2 ... */
-
   SECTOR_FIELDS_COUNT,
 
-};
+  /* WALL1 WALL2 ... */
 
-struct SectorBuffers {
-  DA_TYPE(struct {
-    uint32_t sector_index;
-    uint32_t wall_id;
-  })
-  walls;
 };
 
 // Returned dynamic array must be freed by caller
@@ -321,6 +313,48 @@ static float get_float(const struct Tokens *tokens, uint64_t index,
 }
 
 // 'index' points to the start of the line
+static enum ParseErrors parse_vert(const struct Tokens *tokens, uint64_t index,
+                                   vec2 vert, uint64_t *error_index) {
+  assert(tokens != NULL);
+  assert(vert != NULL);
+
+  uint64_t error_index__ = 0;
+  enum ParseErrors error_type__ = PARSE_ERROR_NONE;
+
+  uint64_t line_length = get_line_length(tokens, index);
+
+  assert(line_length != 0);
+
+  if (line_length != 2) {
+    error_index__ = index + line_length - 1;
+    error_type__ = (line_length > 2) ? PARSE_ERROR_UNEXPECTED_TOKEN
+                                     : PARSE_ERROR_EXPECTED_TOKEN;
+
+    goto Error;
+  }
+
+  // Vert
+  for (uint8_t i = 0; i < 2; i++) {
+    vert[i] = get_float(tokens, index + i, &error_type__, &error_index__);
+
+    if (error_type__ != PARSE_ERROR_NONE) {
+      goto Error;
+    }
+  }
+
+  return PARSE_ERROR_NONE;
+
+Error:
+  if (error_index != NULL) {
+    *error_index = error_index__;
+  }
+
+  printf("Error in vertex\n");
+
+  return error_type__;
+}
+
+// 'index' points to the start of the line
 static enum ParseErrors parse_wall(const struct Tokens *tokens, uint64_t index,
                                    struct dsr_Wall *wall,
                                    uint64_t *error_index) {
@@ -342,34 +376,16 @@ static enum ParseErrors parse_wall(const struct Tokens *tokens, uint64_t index,
     goto Error;
   }
 
-  // Wall ID
-  {
-    wall->id =
-      get_uint32(tokens, index + WALL_FIELD_ID, &error_type__, &error_index__);
-
-    if (error_type__ != PARSE_ERROR_NONE) {
-      goto Error;
-    }
-  }
-
   // Wall vertices
   {
-    float vertices[4] = { 0 };
-
-    // Fetch vertices from source
-    for (uint8_t i = WALL_FIELD_X1; i <= WALL_FIELD_Z2; i++) {
-      vertices[i - WALL_FIELD_X1] =
-        get_float(tokens, index + i, &error_type__, &error_index__);
+    for (uint8_t i = 0; i < 2; i++) {
+      wall->vertices[i] =
+        get_uint32(tokens, index + i, &error_type__, &error_index__);
 
       if (error_type__ != PARSE_ERROR_NONE) {
         goto Error;
       }
     }
-
-    wall->vertices[0][0] = vertices[0];
-    wall->vertices[0][1] = vertices[1];
-    wall->vertices[1][0] = vertices[2];
-    wall->vertices[1][1] = vertices[3];
   }
 
   // Is portal
@@ -404,9 +420,7 @@ Error:
 
 // 'index' points to the start of the line
 static enum ParseErrors parse_sector(const struct Tokens *tokens,
-                                     uint64_t index, uint32_t sector_index,
-                                     struct dsr_Sector *sector,
-                                     struct SectorBuffers *sector_buffers,
+                                     uint64_t index, struct dsr_Sector *sector,
                                      uint64_t *error_index, uint64_t *inc_by) {
   assert(tokens != NULL);
   assert(sector != NULL);
@@ -423,16 +437,6 @@ static enum ParseErrors parse_sector(const struct Tokens *tokens,
     error_index__ = index + line_length - 1;
     error_type__ = PARSE_ERROR_EXPECTED_TOKEN;
     goto Error;
-  }
-
-  // Sector ID
-  {
-    sector->id = get_uint32(tokens, index + SECTOR_FIELD_ID, &error_type__,
-                            &error_index__);
-
-    if (error_type__ != PARSE_ERROR_NONE) {
-      goto Error;
-    }
   }
 
   // Floor height
@@ -457,17 +461,14 @@ static enum ParseErrors parse_sector(const struct Tokens *tokens,
 
   // Walls
   for (uint32_t i = SECTOR_FIELDS_COUNT; i < line_length; i++) {
-    typedef typeof(*sector_buffers->walls.items) WallRecord;
-
-    WallRecord tmp = { 0 };
-    tmp.sector_index = sector_index;
-    tmp.wall_id = get_uint32(tokens, index + i, &error_type__, &error_index__);
+    uint32_t wall =
+      get_uint32(tokens, index + i, &error_type__, &error_index__);
 
     if (error_type__ != PARSE_ERROR_NONE) {
       goto Error;
     }
 
-    DA_APPEND(&sector_buffers->walls, tmp);
+    DA_APPEND(&sector->walls, wall);
   }
 
   *inc_by = line_length;
@@ -484,8 +485,8 @@ Error:
 
 static enum ParseErrors
 get_block_type(enum BlockGuard guard, enum BlockType old, enum BlockType *new) {
-  printf("Block type: %d\n", old);
-  printf("Block guard: %s\n\n", block_guards[guard]);
+  //printf("Block type: %d\n", old);
+  //printf("Block guard: %s\n\n", block_guards[guard]);
 
   switch (guard) {
     case BEGIN_WALLS: {
@@ -504,6 +505,15 @@ get_block_type(enum BlockGuard guard, enum BlockType old, enum BlockType *new) {
       *new = BLOCK_TYPE_SECTORS;
     } break;
 
+    case BEGIN_VERTS: {
+      if (old != BLOCK_TYPE_NONE) {
+        return PARSE_ERROR_UNEXPECTED_TOKEN;
+      }
+
+      *new = BLOCK_TYPE_VERTS;
+    } break;
+
+    case END_VERTS:
     case END_WALLS:
     case END_SECTORS: {
       if (old == BLOCK_TYPE_NONE) {
@@ -538,8 +548,6 @@ static enum ParseErrors parse(const struct Tokens *tokens,
 
   bool is_comment = false;
   enum BlockType block_type = BLOCK_TYPE_NONE;
-
-  struct SectorBuffers sector_buffers = { 0 };
 
   uint64_t inc_by = 1;
   for (uint64_t i = 0; i < tokens->count; i += inc_by) {
@@ -599,7 +607,25 @@ static enum ParseErrors parse(const struct Tokens *tokens,
       continue;
     }
 
-    if (block_type == BLOCK_TYPE_WALLS) {
+    if (block_type == BLOCK_TYPE_VERTS) {
+      uint32_t vert_index = scene->vertices.count;
+      DA_APPEND_NO_ASSIGN(&scene->vertices);
+
+      vec2 *vert = &DA_AT(scene->vertices, vert_index);
+
+      error_type__ = parse_vert(tokens, i, *vert, &error_index__);
+
+      if (error_type__ != PARSE_ERROR_NONE) {
+        goto Error;
+      }
+
+      printf("Vertex {\n"
+             "  %f, %f,\n"
+             "}\n\n",
+             (*vert)[0], (*vert)[1]);
+
+      inc_by = 2;
+    } else if (block_type == BLOCK_TYPE_WALLS) {
       struct dsr_Wall wall = { 0 };
 
       error_type__ = parse_wall(tokens, i, &wall, &error_index__);
@@ -608,30 +634,39 @@ static enum ParseErrors parse(const struct Tokens *tokens,
         goto Error;
       }
       printf("wall {\n"
-             "  .id = %d,\n\n"
              "  .vertices = {\n"
-             "    { %f, %f },\n"
-             "    { %f, %f },\n"
+             "    %lu, %lu,\n"
              "  },\n\n"
              "  .is_portal = %s,\n"
              "}\n\n",
-             wall.id, wall.vertices[0][0], wall.vertices[0][1],
-             wall.vertices[1][0], wall.vertices[1][1],
-             wall.is_portal ? "true" : "false");
+             wall.vertices[0], wall.vertices[1],
+             ((char *[]){ "false", "true" })[wall.is_portal]);
 
-      wall.height = 10;
       DA_APPEND(&scene->walls, wall);
 
       inc_by = WALL_FIELDS_COUNT;
     } else if (block_type == BLOCK_TYPE_SECTORS) {
       struct dsr_Sector sector = { 0 };
 
-      error_type__ = parse_sector(tokens, i, scene->sectors.count, &sector,
-                                  &sector_buffers, &error_index__, &inc_by);
+      error_type__ = parse_sector(tokens, i, &sector, &error_index__, &inc_by);
 
       if (error_type__ != PARSE_ERROR_NONE) {
         goto Error;
       }
+      printf("Sector {\n"
+
+             "  .floor_height = %f,\n"
+             "  .ceil_height = %f,\n\n"
+
+             "  .walls = {\n",
+             sector.floor_height, sector.ceil_height);
+
+      for (uint32_t j = 0; j < sector.walls.count; j++) {
+        printf("    %d,\n", DA_AT(sector.walls, j));
+      }
+
+      printf("  },\n"
+             "}\n\n");
 
       DA_APPEND(&scene->sectors, sector);
 
@@ -642,44 +677,31 @@ static enum ParseErrors parse(const struct Tokens *tokens,
     }
   }
 
-  for (uint64_t i = 0; i < sector_buffers.walls.count; i++) {
-    auto tmp = &DA_AT(sector_buffers.walls, i);
-
-    bool defined = false;
-    for (uint32_t j = 0; j < scene->walls.count; j++) {
-      if (tmp->wall_id == DA_AT(scene->walls, j).id) {
-        DA_APPEND(&DA_AT(scene->sectors, tmp->sector_index).walls, j);
-        defined = true;
-      }
-    }
-
-    if (!defined) {
-      error_type__ = PARSE_ERROR_UNDEFINED_REFERENCE;
-      goto Error;
-    }
-  }
-
+  /*
+	 * Negative indices throw errors in the parsing stage and
+	 * hence, don't need to be checked here.
+	 */
   for (uint32_t i = 0; i < scene->sectors.count; i++) {
     struct dsr_Sector *sector = &DA_AT(scene->sectors, i);
 
-    printf("Sector {\n"
-           "  .id = %d,\n\n"
-
-           "  .floor_height = %f,\n"
-           "  .ceil_height = %f,\n\n"
-
-           "  .walls = {\n",
-           sector->id, sector->floor_height, sector->ceil_height);
-
     for (uint32_t j = 0; j < sector->walls.count; j++) {
-      printf("    %d,\n", DA_AT(sector->walls, j));
+      if (DA_AT(sector->walls, j) >= scene->walls.count) {
+        error_type__ = PARSE_ERROR_UNDEFINED_REFERENCE;
+        goto Error;
+      }
     }
-
-    printf("  },\n"
-           "}\n\n");
   }
 
-  DA_FREE(&sector_buffers.walls);
+  for (uint32_t i = 0; i < scene->walls.count; i++) {
+    struct dsr_Wall *wall = &DA_AT(scene->walls, i);
+
+    for (uint8_t j = 0; j < 2; j++) {
+      if (wall->vertices[j] >= scene->vertices.count) {
+        error_type__ = PARSE_ERROR_UNDEFINED_REFERENCE;
+        goto Error;
+      }
+    }
+  }
 
   return PARSE_ERROR_NONE;
 
@@ -687,8 +709,6 @@ Error:
   if (error_index != NULL) {
     *error_index = error_index__;
   }
-
-  DA_FREE(&sector_buffers.walls);
 
   return error_type__;
 }

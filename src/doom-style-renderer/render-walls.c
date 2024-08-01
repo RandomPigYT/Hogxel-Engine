@@ -283,15 +283,15 @@ static inline void to_screen_space(const struct dsr_Surface *surface,
 }
 
 static void dsr_render_wall(struct dsr_Surface *surface,
-                            const struct dsr_Wall *wall, float floor_height,
-                            float ceil_height, const struct hog_Camera *camera,
+                            const struct dsr_Scene *scene,
+                            const struct dsr_Wall *wall, float wall_height,
+                            const struct hog_Camera *camera,
                             vec2 proj_plane_size, uint8_t wall_colour[4]) {
-  (void)floor_height;
-  (void)ceil_height;
-
   vec4 wall_world_coords[2] = { 0 };
-  get_world_coords(wall->vertices[0], wall_world_coords[0]);
-  get_world_coords(wall->vertices[1], wall_world_coords[1]);
+  get_world_coords(DA_AT(scene->vertices, wall->vertices[0]),
+                   wall_world_coords[0]);
+  get_world_coords(DA_AT(scene->vertices, wall->vertices[1]),
+                   wall_world_coords[1]);
 
   vec4 relative_coords[2] = { 0 };
   get_relative_coords(camera, wall_world_coords[0], relative_coords[0]);
@@ -320,7 +320,7 @@ static void dsr_render_wall(struct dsr_Surface *surface,
 
   {
     vec2 temp = { 0 };
-    y_projection(camera, clipped_coords[0], wall->height, temp);
+    y_projection(camera, clipped_coords[0], wall_height, temp);
 
     projected[0][0] = projected_x[0];
     projected[0][1] = temp[0];
@@ -331,7 +331,7 @@ static void dsr_render_wall(struct dsr_Surface *surface,
 
   {
     vec2 temp = { 0 };
-    y_projection(camera, clipped_coords[1], wall->height, temp);
+    y_projection(camera, clipped_coords[1], wall_height, temp);
 
     projected[2][0] = projected_x[1];
     projected[2][1] = temp[1];
@@ -429,7 +429,7 @@ void dsr_render_walls(struct dsr_Surface *surface,
   for (uint32_t i = 0; i < scene->walls.count; i++) {
     //dsr_render_wall(surface, &DA_AT(scene->walls, i), camera, proj_plane_size,
     //                (uint8_t[4]){ 255, 0, 0, 255 });
-    dsr_render_wall(surface, &DA_AT(scene->walls, i), 0.0f, 0.0f, camera,
+    dsr_render_wall(surface, scene, &DA_AT(scene->walls, i), 10.0f, camera,
                     proj_plane_size,
                     (uint8_t[4]){ DA_AT(palette, i)[0], DA_AT(palette, i)[1],
                                   DA_AT(palette, i)[2], 255 });

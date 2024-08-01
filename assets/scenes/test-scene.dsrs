@@ -1,26 +1,44 @@
 # Note: No significant whitespace
 
-# Wall: id x1 z1 x2 z2 is_portal
+
+#Vertex: x z
+[BEGIN_VERTS]
+
+	-20.0  20.0
+	-20.0 -20.0
+	 20.0 -20.0
+	 20.0  20.0
+	
+[END_VERTS]
+
+[BEGIN_VERTS]
+	
+	-10.0 10.0
+	 10.0 10.0
+
+[END_VERTS]
+
+
+# Wall: vert1 vert2 is_portal
 [BEGIN_WALLS]
 
-	0 -20.0 20.0 20.0 20.0 false
-	1 -20.0 20.0 -20.0 -20.0 false
-
+	0 1 false
+	1 2 false
+	2 3 false
+	3 0 false
 
 [END_WALLS]
 
 [BEGIN_WALLS]
-
-	2 -20.0 -20.0 20.0 -20.0 false
-	3 20.0 -20.0 20.0 20.0 false
-	4 -10.0 10.0 10.0 10.0 false
-
+	
+	4 6 false
+	
 [END_WALLS]
 
-# Sector: id floor_height ceiling_height walls
+# Sector: floor_height ceiling_height wall_indices
 [BEGIN_SECTORS]
 
-	0 0.0 10.0 0 1 2 3
+	0.0 10.0 0 1 2 3
 
 [END_SECTORS]
 
