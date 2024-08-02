@@ -1,5 +1,4 @@
 #include "render-walls.h"
-
 #include "doom-style-renderer.h"
 #include "util/dynamic_array.h"
 
@@ -7,6 +6,17 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
+
+struct Portal {
+  uint32_t sector_index;
+  uint32_t through;
+  int32_t screen_space[4][2];
+};
+
+struct PortalQueue {
+  DA_TYPE(struct Portal) portals;
+};
 
 static inline void get_world_coords(const vec2 map_coords, vec4 world_coords) {
   world_coords[0] = map_coords[0];
@@ -284,9 +294,12 @@ static inline void to_screen_space(const struct dsr_Surface *surface,
 
 static void dsr_render_wall(struct dsr_Surface *surface,
                             const struct dsr_Scene *scene,
-                            const struct dsr_Wall *wall, float wall_height,
-                            const struct hog_Camera *camera,
-                            vec2 proj_plane_size, uint8_t wall_colour[4]) {
+                            uint32_t sector_index, uint32_t wall_index,
+                            float wall_height, const struct hog_Camera *camera,
+                            vec2 proj_plane_size, uint8_t wall_colour[4],
+                            struct PortalQueue *portal_queue) {
+  struct dsr_Wall *wall = &DA_AT(scene->walls, wall_index);
+
   vec4 wall_world_coords[2] = { 0 };
   get_world_coords(DA_AT(scene->vertices, wall->vertices[0]),
                    wall_world_coords[0]);
@@ -349,7 +362,16 @@ static void dsr_render_wall(struct dsr_Surface *surface,
   //printf("Screen space: \n");
   for (uint32_t i = 0; i < 4; i++) {
     to_screen_space(surface, projected[i], proj_plane_size, screen_space[i]);
-    //glm_ivec2_print((ivec2){ screen_space[i][0], screen_space[i][1] }, stdout);
+  }
+
+  if (wall->is_portal) {
+    struct Portal p = { 0 };
+
+    p.sector_index = sector_index;
+    p.through = wall_index;
+    memcpy(p.screen_space, screen_space, sizeof(screen_space));
+
+    DA_APPEND(&portal_queue->portals, p);
   }
 
   //printf("\n");
@@ -426,26 +448,18 @@ void dsr_render_walls(struct dsr_Surface *surface,
     DA_AT(palette, palette.count - 1)[3] = 255;
   }
 
-  //for (uint32_t i = 0; i < scene->walls.count; i++) {
-  //  //dsr_render_wall(surface, &DA_AT(scene->walls, i), camera, proj_plane_size,
-  //  //                (uint8_t[4]){ 255, 0, 0, 255 });
-  //  dsr_render_wall(surface, scene, &DA_AT(scene->walls, i), 10.0f, camera,
-  //                  proj_plane_size,
-  //                  (uint8_t[4]){ DA_AT(palette, i)[0], DA_AT(palette, i)[1],
-  //                                DA_AT(palette, i)[2], 255 });
-  //}
+  struct PortalQueue portal_queue = { 0 };
 
   for (uint32_t i = 0; i < scene->sectors.count; i++) {
     struct dsr_Sector *sector = &DA_AT(scene->sectors, i);
     for (uint32_t j = 0; j < sector->walls.count; j++) {
-      struct dsr_Wall *wall = &DA_AT(scene->walls, DA_AT(sector->walls, j));
       uint32_t wall_index = DA_AT(sector->walls, j);
 
       struct hog_Camera temp_cam = *camera;
 
-      glm_vec3_sub(temp_cam.position,
-                   (vec3){ 0.0f, sector->floor_height, 0.0f },
-                   temp_cam.position);
+      //glm_vec3_add(temp_cam.position,
+      //             (vec3){ 0.0f, sector->floor_height, 0.0f },
+      //             temp_cam.position);
 
       uint8_t colour[4] = {
         DA_AT(palette, wall_index)[0],
@@ -454,11 +468,12 @@ void dsr_render_walls(struct dsr_Surface *surface,
         255,
       };
 
-      dsr_render_wall(surface, scene, wall,
-                      sector->ceil_height - sector->floor_height, camera,
-                      proj_plane_size, colour);
+      dsr_render_wall(surface, scene, i, wall_index,
+                      sector->ceil_height - sector->floor_height, &temp_cam,
+                      proj_plane_size, colour, &portal_queue);
     }
   }
 
   DA_FREE(&palette);
+  DA_FREE(&portal_queue.portals);
 }

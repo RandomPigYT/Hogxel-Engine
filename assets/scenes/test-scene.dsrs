@@ -38,8 +38,7 @@
 # Sector: floor_height ceiling_height wall_indices
 [BEGIN_SECTORS]
 
-	0.0 10.0 0 1 2 3 4
-	0.0 10.0 0 1 2 3 4
+	-10.0 10.0 0 1 2 3 4
 
 [END_SECTORS]
 

@@ -3,6 +3,7 @@
 #define UTIL_DYNAMIC_ARRAY
 
 #include <assert.h>
+#include <string.h>
 
 #define DA_TYPE(type)  \
   struct {             \
@@ -62,17 +63,25 @@
     (arr)->capacity = 0; \
   } while (0)
 
-#define DA_DELETE_ITEM(arr, index)                                            \
-  do {                                                                        \
+// Does not work with arrays
+#define DA_POP(arr, index)                                                    \
+  ({                                                                          \
     assert((arr)->count != 0 && "Attempted to pop from empty dynamic array"); \
     assert((index) < (arr)->count && "Invalid index");                        \
+                                                                              \
+    typeof(*(arr)->items) da_macro_item;                                      \
+    memcpy(&da_macro_item, &(arr)->items[(index)], sizeof(*(arr)->items));    \
+                                                                              \
     if ((index) == (arr)->count - 1) {                                        \
       (arr)->count--;                                                         \
+                                                                              \
     } else {                                                                  \
-      memmove(&((arr)->items[index]), &((arr)->items[index + 1]),             \
-              ((arr)->count - index - 1) * sizeof(*(arr)->items));            \
+      memmove(&((arr)->items[(index)]), &((arr)->items[(index) + 1]),         \
+              ((arr)->count - (index) - 1) * sizeof(*(arr)->items));          \
       (arr)->count--;                                                         \
     }                                                                         \
-  } while (0)
+                                                                              \
+    da_macro_item;                                                            \
+  })
 
 #endif // UTIL_DYNAMIC_ARRAY
