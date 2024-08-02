@@ -426,13 +426,38 @@ void dsr_render_walls(struct dsr_Surface *surface,
     DA_AT(palette, palette.count - 1)[3] = 255;
   }
 
-  for (uint32_t i = 0; i < scene->walls.count; i++) {
-    //dsr_render_wall(surface, &DA_AT(scene->walls, i), camera, proj_plane_size,
-    //                (uint8_t[4]){ 255, 0, 0, 255 });
-    dsr_render_wall(surface, scene, &DA_AT(scene->walls, i), 10.0f, camera,
-                    proj_plane_size,
-                    (uint8_t[4]){ DA_AT(palette, i)[0], DA_AT(palette, i)[1],
-                                  DA_AT(palette, i)[2], 255 });
+  //for (uint32_t i = 0; i < scene->walls.count; i++) {
+  //  //dsr_render_wall(surface, &DA_AT(scene->walls, i), camera, proj_plane_size,
+  //  //                (uint8_t[4]){ 255, 0, 0, 255 });
+  //  dsr_render_wall(surface, scene, &DA_AT(scene->walls, i), 10.0f, camera,
+  //                  proj_plane_size,
+  //                  (uint8_t[4]){ DA_AT(palette, i)[0], DA_AT(palette, i)[1],
+  //                                DA_AT(palette, i)[2], 255 });
+  //}
+
+  for (uint32_t i = 0; i < scene->sectors.count; i++) {
+    struct dsr_Sector *sector = &DA_AT(scene->sectors, i);
+    for (uint32_t j = 0; j < sector->walls.count; j++) {
+      struct dsr_Wall *wall = &DA_AT(scene->walls, DA_AT(sector->walls, j));
+      uint32_t wall_index = DA_AT(sector->walls, j);
+
+      struct hog_Camera temp_cam = *camera;
+
+      glm_vec3_sub(temp_cam.position,
+                   (vec3){ 0.0f, sector->floor_height, 0.0f },
+                   temp_cam.position);
+
+      uint8_t colour[4] = {
+        DA_AT(palette, wall_index)[0],
+        DA_AT(palette, wall_index)[1],
+        DA_AT(palette, wall_index)[2],
+        255,
+      };
+
+      dsr_render_wall(surface, scene, wall,
+                      sector->ceil_height - sector->floor_height, camera,
+                      proj_plane_size, colour);
+    }
   }
 
   DA_FREE(&palette);

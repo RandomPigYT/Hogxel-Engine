@@ -3,7 +3,7 @@ PROJ_OBJ := $(ROOT_PATH)/$(OBJ)/test
 PROJ_BIN := $(ROOT_PATH)/$(BIN)
 PROJ_INCLUDE := $(ROOT_PATH)/$(INCLUDE)
 
-CFLAGS += -Wall -Wextra -g -std=gnu23 -I$(EXTERNAL_DIR)/SDL/include -O3
+CFLAGS += -Wall -Wextra -ggdb3 -std=gnu23 -I$(EXTERNAL_DIR)/SDL/include -O3
 LDFLAGS += -Wl,-rpath=$(EXTERNAL_LIBS_DIR)/SDL -L$(EXTERNAL_LIBS_DIR)/SDL -lSDL3 -ldoom-style-renderer
 
 TARGET := $(PROJ_BIN)/test

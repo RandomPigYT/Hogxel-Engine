@@ -50,13 +50,14 @@ static const char special[] = "[]#\n"; // Preseverved as tokens
   X(BEGIN_SECTORS)      \
   X(END_SECTORS)
 
-#define PARSE_ERRORS()              \
-  X(PARSE_ERROR_NONE)               \
-  X(PARSE_ERROR_EXPECTED_TOKEN)     \
-  X(PARSE_ERROR_UNEXPECTED_TOKEN)   \
-  X(PARSE_ERROR_ID_OUT_OF_RANGE)    \
-  X(PARSE_ERROR_FLOAT_OUT_OF_RANGE) \
-  X(PARSE_ERROR_UNDEFINED_REFERENCE)
+#define PARSE_ERRORS()               \
+  X(PARSE_ERROR_NONE)                \
+  X(PARSE_ERROR_EXPECTED_TOKEN)      \
+  X(PARSE_ERROR_UNEXPECTED_TOKEN)    \
+  X(PARSE_ERROR_ID_OUT_OF_RANGE)     \
+  X(PARSE_ERROR_FLOAT_OUT_OF_RANGE)  \
+  X(PARSE_ERROR_UNDEFINED_REFERENCE) \
+  X(PARSE_ERROR_INVALID_WALL)
 
 // clang-format off
 
@@ -700,6 +701,21 @@ static enum ParseErrors parse(const struct Tokens *tokens,
         error_type__ = PARSE_ERROR_UNDEFINED_REFERENCE;
         goto Error;
       }
+    }
+  }
+
+  for (uint32_t i = 0; i < scene->sectors.count; i++) {
+    struct dsr_Sector *sector = &DA_AT(scene->sectors, i);
+
+    for (uint32_t j = 0; j < sector->walls.count; j++) {
+      struct dsr_Wall *wall = &DA_AT(scene->walls, DA_AT(sector->walls, j));
+
+      if (wall->shared_count >= 2) {
+        error_type__ = PARSE_ERROR_INVALID_WALL;
+        goto Error;
+      }
+
+      wall->shared_with[wall->shared_count++] = i;
     }
   }
 
