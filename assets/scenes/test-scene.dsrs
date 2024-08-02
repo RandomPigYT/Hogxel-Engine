@@ -1,13 +1,12 @@
 # Note: No significant whitespace
 
-
 #Vertex: x z
 [BEGIN_VERTS]
 
 	-20.0  20.0
-	-20.0 -20.0
-	 20.0 -20.0
 	 20.0  20.0
+	 20.0 -20.0
+	-20.0 -20.0
 	
 [END_VERTS]
 
@@ -36,9 +35,11 @@
 [END_WALLS]
 
 # Sector: floor_height ceiling_height wall_indices
+# Walls must be in clockwise order
+# Holes must also be in clockwise order
 [BEGIN_SECTORS]
 
-	-10.0 10.0 0 1 2 3 4
+	0.0 10.0 0 1 2 3
 
 [END_SECTORS]
 

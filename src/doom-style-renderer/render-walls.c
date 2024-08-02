@@ -18,7 +18,8 @@ struct PortalQueue {
   DA_TYPE(struct Portal) portals;
 };
 
-static inline void get_world_coords(const vec2 map_coords, vec4 world_coords) {
+static inline void get_world_coords(const vec2 map_coords, vec4 world_coords)
+{
   world_coords[0] = map_coords[0];
   world_coords[1] = 0.0f;
   world_coords[2] = map_coords[1];
@@ -27,7 +28,8 @@ static inline void get_world_coords(const vec2 map_coords, vec4 world_coords) {
 
 static inline void get_relative_coords(const struct hog_Camera *camera,
                                        const vec4 world_coords,
-                                       vec4 relative_coords) {
+                                       vec4 relative_coords)
+{
   glm_vec3_sub((float *)world_coords, (float *)camera->position,
                relative_coords);
   relative_coords[3] = 1.0f;
@@ -43,30 +45,34 @@ static inline void get_relative_coords(const struct hog_Camera *camera,
 }
 
 static inline float x_projection(const struct hog_Camera *camera,
-                                 vec4 relative_coords) {
+                                 vec4 relative_coords)
+{
   //printf("relative: %f\n", relative_coords[2]);
   return relative_coords[0] * camera->near_clipping_plane / relative_coords[2];
 }
 
 static inline void y_projection(const struct hog_Camera *camera,
-                                const vec4 relative_coords, float wall_height,
-                                vec2 projected) {
+                                const vec4 relative_coords, float floor_height,
+                                float ceil_height, vec2 projected)
+{
   float depth = relative_coords[2];
   float cam_height = camera->position[1];
 
-  projected[0] = wall_height - cam_height;
-  projected[1] = -cam_height;
+  projected[0] = ceil_height - cam_height;
+  projected[1] = floor_height - cam_height;
 
   glm_vec2_divs(projected, depth, projected);
   glm_vec2_scale(projected, camera->near_clipping_plane, projected);
 }
 
-static inline bool is_zero(float n, float eps) {
+static inline bool is_zero(float n, float eps)
+{
   return n < eps && n > -eps;
 }
 
 static bool intersect_line_segments(const vec4 line1[2], const vec4 line2[2],
-                                    vec4 intersection) {
+                                    vec4 intersection)
+{
   vec2 p = { line1[0][0], line1[0][2] };
   vec2 q = { line2[0][0], line2[0][2] };
 
@@ -112,7 +118,8 @@ static bool intersect_line_segments(const vec4 line1[2], const vec4 line2[2],
 
 static bool clipped_wall_positions(const vec4 relative_coords[2],
                                    const struct hog_Camera *camera,
-                                   vec4 clipped[2]) {
+                                   vec4 clipped[2])
+{
   glm_vec4_copy((float *)relative_coords[0], clipped[0]);
   glm_vec4_copy((float *)relative_coords[1], clipped[1]);
 
@@ -248,7 +255,8 @@ static bool clipped_wall_positions(const vec4 relative_coords[2],
   return true;
 }
 
-static inline int32_t int_clamp(int32_t val, int32_t min_val, int32_t max_val) {
+static inline int32_t int_clamp(int32_t val, int32_t min_val, int32_t max_val)
+{
   if (val < min_val) {
     return min_val;
 
@@ -261,7 +269,8 @@ static inline int32_t int_clamp(int32_t val, int32_t min_val, int32_t max_val) {
 }
 
 static void draw_vertical_line(struct dsr_Surface *surface, int32_t x,
-                               int32_t y1, int32_t y2, uint8_t colour[4]) {
+                               int32_t y1, int32_t y2, uint8_t colour[4])
+{
   if (x < 0 || x >= surface->width)
     return;
 
@@ -280,8 +289,10 @@ static void draw_vertical_line(struct dsr_Surface *surface, int32_t x,
 }
 
 static inline void to_screen_space(const struct dsr_Surface *surface,
-                                   const vec2 projected, vec2 proj_plane_size,
-                                   int32_t screen_space[2]) {
+                                   const vec2 projected,
+                                   const vec2 proj_plane_size,
+                                   int32_t screen_space[2])
+{
   assert(proj_plane_size[0] > 0 && proj_plane_size[1] > 0);
 
   screen_space[0] =
@@ -294,10 +305,14 @@ static inline void to_screen_space(const struct dsr_Surface *surface,
 
 static void dsr_render_wall(struct dsr_Surface *surface,
                             const struct dsr_Scene *scene,
-                            uint32_t sector_index, uint32_t wall_index,
-                            float wall_height, const struct hog_Camera *camera,
-                            vec2 proj_plane_size, uint8_t wall_colour[4],
-                            struct PortalQueue *portal_queue) {
+                            uint32_t cam_sector_index,
+                            uint32_t drawing_sector_index, uint32_t wall_index,
+                            const struct hog_Camera *camera,
+                            const vec2 proj_plane_size, uint8_t wall_colour[4],
+                            struct PortalQueue *portal_queue)
+{
+  (void)cam_sector_index;
+
   struct dsr_Wall *wall = &DA_AT(scene->walls, wall_index);
 
   vec4 wall_world_coords[2] = { 0 };
@@ -332,8 +347,10 @@ static void dsr_render_wall(struct dsr_Surface *surface,
   };
 
   {
+    struct dsr_Sector *s = &DA_AT(scene->sectors, drawing_sector_index);
     vec2 temp = { 0 };
-    y_projection(camera, clipped_coords[0], wall_height, temp);
+    y_projection(camera, clipped_coords[0], s->floor_height, s->ceil_height,
+                 temp);
 
     projected[0][0] = projected_x[0];
     projected[0][1] = temp[0];
@@ -343,8 +360,10 @@ static void dsr_render_wall(struct dsr_Surface *surface,
   }
 
   {
+    struct dsr_Sector *s = &DA_AT(scene->sectors, drawing_sector_index);
     vec2 temp = { 0 };
-    y_projection(camera, clipped_coords[1], wall_height, temp);
+    y_projection(camera, clipped_coords[1], s->floor_height, s->ceil_height,
+                 temp);
 
     projected[2][0] = projected_x[1];
     projected[2][1] = temp[1];
@@ -367,7 +386,12 @@ static void dsr_render_wall(struct dsr_Surface *surface,
   if (wall->is_portal) {
     struct Portal p = { 0 };
 
-    p.sector_index = sector_index;
+    assert(wall->shared_count < 2);
+
+    p.sector_index = wall->shared_with[0] != drawing_sector_index
+                       ? wall->shared_with[0]
+                       : wall->shared_with[1];
+
     p.through = wall_index;
     memcpy(p.screen_space, screen_space, sizeof(screen_space));
 
@@ -425,13 +449,23 @@ static void dsr_render_wall(struct dsr_Surface *surface,
     draw_vertical_line(surface, x, y1, y2, c);
     draw_vertical_line(surface, x, 0, y1, (uint8_t[4]){ 35, 35, 35, 255 });
     draw_vertical_line(surface, x, y2, surface->height - 1,
-                       (uint8_t[4]){ 24, 24, 24, 255 });
+                       (uint8_t[4]){ 100, 24, 24, 255 });
   }
+}
+
+static int64_t find_camera_sector(const struct hog_Camera *camera,
+                                  const struct dsr_Scene *scene)
+{
+  (void)camera;
+  (void)scene;
+
+  return -1;
 }
 
 void dsr_render_walls(struct dsr_Surface *surface,
                       const struct dsr_Scene *scene,
-                      const struct hog_Camera *camera, vec2 proj_plane_size) {
+                      const struct hog_Camera *camera, vec2 proj_plane_size)
+{
   srand((int)6942080085);
   for (int32_t i = 0; i < rand() % 100; i++) {
     rand();
@@ -450,6 +484,8 @@ void dsr_render_walls(struct dsr_Surface *surface,
 
   struct PortalQueue portal_queue = { 0 };
 
+  int64_t camera_sector = find_camera_sector(camera, scene);
+
   for (uint32_t i = 0; i < scene->sectors.count; i++) {
     struct dsr_Sector *sector = &DA_AT(scene->sectors, i);
     for (uint32_t j = 0; j < sector->walls.count; j++) {
@@ -457,9 +493,9 @@ void dsr_render_walls(struct dsr_Surface *surface,
 
       struct hog_Camera temp_cam = *camera;
 
-      //glm_vec3_add(temp_cam.position,
-      //             (vec3){ 0.0f, sector->floor_height, 0.0f },
-      //             temp_cam.position);
+      glm_vec3_add(temp_cam.position,
+                   (vec3){ 0.0f, sector->floor_height, 0.0f },
+                   temp_cam.position);
 
       uint8_t colour[4] = {
         DA_AT(palette, wall_index)[0],
@@ -468,8 +504,7 @@ void dsr_render_walls(struct dsr_Surface *surface,
         255,
       };
 
-      dsr_render_wall(surface, scene, i, wall_index,
-                      sector->ceil_height - sector->floor_height, &temp_cam,
+      dsr_render_wall(surface, scene, camera_sector, i, wall_index, &temp_cam,
                       proj_plane_size, colour, &portal_queue);
     }
   }

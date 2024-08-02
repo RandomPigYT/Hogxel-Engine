@@ -1,6 +1,8 @@
+#include "doom-style-renderer.h"
+#include "scene_integrity.h"
+
 #define UTIL_FILE_IO_IMPLEMENTATION
 #include "util/fileIO.h"
-#include "doom-style-renderer.h"
 #include "util/dynamic_array.h"
 
 #include "cglm/include/cglm/cglm.h"
@@ -127,7 +129,8 @@ enum SectorFields {
 };
 
 // Returned dynamic array must be freed by caller
-static struct Tokens tokenize(const char *src) {
+static struct Tokens tokenize(const char *src)
+{
   struct Tokens toks = { 0 };
 
   struct StringView token = { 0 };
@@ -167,7 +170,8 @@ static struct Tokens tokenize(const char *src) {
 static enum ParseErrors parse_block_guard(const struct Tokens *tokens,
                                           uint64_t index,
                                           enum BlockGuard *guard,
-                                          uint64_t *error_index) {
+                                          uint64_t *error_index)
+{
   assert(guard != NULL);
   assert(tokens != NULL);
 
@@ -227,7 +231,8 @@ Error:
 }
 
 static inline uint64_t get_line_length(const struct Tokens *tokens,
-                                       uint64_t index) {
+                                       uint64_t index)
+{
   uint64_t line_length = 0;
   for (uint64_t i = index; i < tokens->count; i++) {
     if (DA_AT(*tokens, i).view[0] == '\n') {
@@ -241,8 +246,8 @@ static inline uint64_t get_line_length(const struct Tokens *tokens,
 }
 
 static uint32_t get_uint32(const struct Tokens *tokens, uint64_t index,
-                           enum ParseErrors *error_type,
-                           uint64_t *error_index) {
+                           enum ParseErrors *error_type, uint64_t *error_index)
+{
   struct StringView *tok = &DA_AT(*tokens, index);
 
   char *tmp = malloc(tok->length + 1);
@@ -278,7 +283,8 @@ static uint32_t get_uint32(const struct Tokens *tokens, uint64_t index,
 }
 
 static float get_float(const struct Tokens *tokens, uint64_t index,
-                       enum ParseErrors *error_type, uint64_t *error_index) {
+                       enum ParseErrors *error_type, uint64_t *error_index)
+{
   struct StringView *tok = &DA_AT(*tokens, index);
 
   char *tmp = malloc(tok->length + 1);
@@ -315,7 +321,8 @@ static float get_float(const struct Tokens *tokens, uint64_t index,
 
 // 'index' points to the start of the line
 static enum ParseErrors parse_vert(const struct Tokens *tokens, uint64_t index,
-                                   vec2 vert, uint64_t *error_index) {
+                                   vec2 vert, uint64_t *error_index)
+{
   assert(tokens != NULL);
   assert(vert != NULL);
 
@@ -357,8 +364,8 @@ Error:
 
 // 'index' points to the start of the line
 static enum ParseErrors parse_wall(const struct Tokens *tokens, uint64_t index,
-                                   struct dsr_Wall *wall,
-                                   uint64_t *error_index) {
+                                   struct dsr_Wall *wall, uint64_t *error_index)
+{
   assert(tokens != NULL);
   assert(wall != NULL);
 
@@ -422,7 +429,8 @@ Error:
 // 'index' points to the start of the line
 static enum ParseErrors parse_sector(const struct Tokens *tokens,
                                      uint64_t index, struct dsr_Sector *sector,
-                                     uint64_t *error_index, uint64_t *inc_by) {
+                                     uint64_t *error_index, uint64_t *inc_by)
+{
   assert(tokens != NULL);
   assert(sector != NULL);
   assert(inc_by != NULL);
@@ -484,8 +492,9 @@ Error:
   return error_type__;
 }
 
-static enum ParseErrors
-get_block_type(enum BlockGuard guard, enum BlockType old, enum BlockType *new) {
+static enum ParseErrors get_block_type(enum BlockGuard guard,
+                                       enum BlockType old, enum BlockType *new)
+{
   //printf("Block type: %d\n", old);
   //printf("Block guard: %s\n\n", block_guards[guard]);
 
@@ -534,7 +543,8 @@ get_block_type(enum BlockGuard guard, enum BlockType old, enum BlockType *new) {
 }
 
 static enum ParseErrors parse(const struct Tokens *tokens,
-                              struct dsr_Scene *scene, uint64_t *error_index) {
+                              struct dsr_Scene *scene, uint64_t *error_index)
+{
 #ifndef RELEASE
 
   for (uint64_t i = 0; i < tokens->count; i++) {
@@ -729,7 +739,8 @@ Error:
   return error_type__;
 }
 
-bool dsr_load_scene(const char *scene_path, struct dsr_Scene *scene) {
+bool dsr_load_scene(const char *scene_path, struct dsr_Scene *scene)
+{
   (void)scene;
 
   char *scene_src = fio_read_file(scene_path);
@@ -766,10 +777,24 @@ bool dsr_load_scene(const char *scene_path, struct dsr_Scene *scene) {
   auto res = parse(&toks, scene, &error_index);
   printf("Parse result: %d\n", res);
 
+  if (res != PARSE_ERROR_NONE) {
+    return false;
+  }
+
+  uint32_t failed_at_sector = 0;
+  uint32_t failed_at_wall = 0;
+  uint32_t actual_wall_index = 0;
+
+  auto whee = assert_scene_integrity(scene, &failed_at_sector, &failed_at_wall,
+                                     &actual_wall_index);
+  if (whee != FAIL_CONDITION_NONE) {
+    return false;
+  }
+
   DA_FREE(&toks);
   free(scene_src);
 
-  return res == PARSE_ERROR_NONE;
+  return true;
 }
 
 /*

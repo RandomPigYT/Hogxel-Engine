@@ -18,17 +18,22 @@
 #define PLAYER_ANGULAR_SPEED 3.5f
 
 enum direction {
-  FORWARD,
+  FORWARD = 0,
   BACKWARDS,
   LEFT,
   RIGHT,
+  UP,
+  DOWN,
+
+  DIR_COUNT,
 };
 
-bool moving[4] = { 0 };
+bool moving[DIR_COUNT] = { 0 };
 int32_t turning = 0;
 
 void update_dsr_surface(struct dsr_Surface *dsr_surface,
-                        const SDL_Surface *sdl_surface) {
+                        const SDL_Surface *sdl_surface)
+{
   const SDL_PixelFormatDetails *format =
     SDL_GetPixelFormatDetails(sdl_surface->format);
 
@@ -67,7 +72,8 @@ void update_dsr_surface(struct dsr_Surface *dsr_surface,
   *dsr_surface = s;
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
   if (argc <= 1) {
     fprintf(stderr, "Bad usage\n");
     return EXIT_FAILURE;
@@ -106,7 +112,7 @@ int main(int argc, char **argv) {
     .aspect_ratio = (float)dsr_surface.width / (float)dsr_surface.height,
 
     .near_clipping_plane = 0.1f,
-    .far_clipping_plane = 50.0f,
+    .far_clipping_plane = 100.0f,
 
     .position = { 0.0f, 5.0f, -5.0f },
     //.direction = { 0.0f, 0.0f, 1.0f },
@@ -164,6 +170,13 @@ int main(int argc, char **argv) {
           moving[RIGHT] = true;
         }
 
+        if (e.key.key == SDLK_SPACE) {
+          moving[UP] = true;
+        }
+        if (e.key.key == SDLK_LSHIFT) {
+          moving[DOWN] = true;
+        }
+
         if (e.key.key == SDLK_J) {
           turning = -1;
         }
@@ -184,6 +197,13 @@ int main(int argc, char **argv) {
         }
         if (e.key.key == SDLK_D) {
           moving[RIGHT] = false;
+        }
+
+        if (e.key.key == SDLK_SPACE) {
+          moving[UP] = false;
+        }
+        if (e.key.key == SDLK_LSHIFT) {
+          moving[DOWN] = false;
         }
 
         if (e.key.key == SDLK_J && turning == -1) {
@@ -244,6 +264,14 @@ int main(int argc, char **argv) {
       glm_vec3_scale(dir, PLAYER_SPEED * deltatime, dir);
 
       glm_vec3_add(cam.position, dir, cam.position);
+    }
+
+    if (moving[UP]) {
+      cam.position[1] += PLAYER_SPEED * deltatime;
+    }
+
+    if (moving[DOWN]) {
+      cam.position[1] -= PLAYER_SPEED * deltatime;
     }
 
     if (turning != 0) {
