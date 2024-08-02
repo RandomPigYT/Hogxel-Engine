@@ -7,8 +7,7 @@
 #include <assert.h>
 
 void dsr_render(struct dsr_Surface *surface, const struct dsr_Scene *scene,
-                const struct hog_Camera *camera)
-{
+                const struct hog_Camera *camera) {
   assert(surface->pixel_format.bytes_per_pixel == 4 &&
          "Unsupported pixel format");
 

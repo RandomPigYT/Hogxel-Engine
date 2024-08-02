@@ -32,8 +32,7 @@ bool moving[DIR_COUNT] = { 0 };
 int32_t turning = 0;
 
 void update_dsr_surface(struct dsr_Surface *dsr_surface,
-                        const SDL_Surface *sdl_surface)
-{
+                        const SDL_Surface *sdl_surface) {
   const SDL_PixelFormatDetails *format =
     SDL_GetPixelFormatDetails(sdl_surface->format);
 
@@ -72,8 +71,7 @@ void update_dsr_surface(struct dsr_Surface *dsr_surface,
   *dsr_surface = s;
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   if (argc <= 1) {
     fprintf(stderr, "Bad usage\n");
     return EXIT_FAILURE;

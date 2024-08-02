@@ -86,11 +86,16 @@ struct dsr_Scene {
   DA_TYPE(struct dsr_Sector) sectors;
 };
 
-// Parses the file specified by "scene_source" and stores inside "scene"
-// Does not allocate any memory so, caller must provide a valid pointer
+// Parses the file specified by "scene_source" and stores inside "scene".
+// Does not allocate any memory so, caller must provide a valid pointer.
 bool dsr_load_scene(const char *scene_path, struct dsr_Scene *scene);
 
-// The direction vector of the camera must be normalized
+// Returns the index of the current sector.
+// Returns -1 if no sector was found.
+int64_t dsr_find_sector(const struct dsr_Scene *scene,
+                        const struct hog_Camera *camera);
+
+// The direction vector of the camera must be normalized.
 void dsr_render(struct dsr_Surface *surface, const struct dsr_Scene *scene,
                 const struct hog_Camera *camera);
 

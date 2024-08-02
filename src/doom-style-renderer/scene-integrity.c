@@ -1,5 +1,5 @@
 #include "doom-style-renderer.h"
-#include "scene_integrity.h"
+#include "scene-integrity.h"
 
 // clang-format off
 
@@ -13,10 +13,15 @@ const char *fail_conditions[] = {
 
 // clang-format on
 
+// TODO: Implement this at some point
 enum FailConditions assert_scene_integrity(struct dsr_Scene *scene,
                                            uint32_t *failed_at_sector,
                                            uint32_t *failed_at_wall,
-                                           uint32_t *actual_wall_index)
-{
+                                           uint32_t *actual_wall_index) {
+  (void)scene;
+  (void)failed_at_sector;
+  (void)failed_at_wall;
+  (void)actual_wall_index;
+
   return FAIL_CONDITION_NONE;
 }
