@@ -1,7 +1,7 @@
 # Note: No significant whitespace
 
 #Vertex: x z
-[BEGIN_VERTS]
+[BEGIN_VERTS] # Outer sector
 
 	-20.0  20.0
 	 20.0  20.0
@@ -10,10 +10,12 @@
 	
 [END_VERTS]
 
-[BEGIN_VERTS]
+[BEGIN_VERTS] # Hole
 	
-	-10.0 10.0
-	 10.0 10.0
+	 10.0  10.0
+	-10.0  10.0
+	-10.0 -10.0
+	 10.0 -10.0
 
 [END_VERTS]
 
@@ -30,16 +32,22 @@
 
 [BEGIN_WALLS]
 	
-	4 5 false
+	4 5 true
+	5 6 true
+	6 7 true
+	7 4 true
 	
 [END_WALLS]
 
-# Sector: floor_height ceiling_height wall_indices
-# Walls must be in clockwise order
-# Holes must also be in clockwise order
+# Sector: floor_height ceiling_height cycle1 [, [cycle2, ...]]
+# Cycles are walls indices that constitute one simple closed polygon (No self-intersections).
+# Cycles are separated by commas
+# Each hole must be its own cycle
+# Each hole must be specified in counter-clockwise direction
 [BEGIN_SECTORS]
 
-	0.0 10.0 0 1 2 3
+	0.0 10.0 0 1 2 3, 4 5 6 7
+ -8.0 2.0 4 5 6 7
 
 [END_SECTORS]
 

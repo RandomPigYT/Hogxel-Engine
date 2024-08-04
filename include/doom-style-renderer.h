@@ -78,6 +78,7 @@ struct dsr_Sector {
   float floor_height, ceil_height;
 
   DA_TYPE(uint32_t) walls; // Indices
+  DA_TYPE(uint32_t) cycle_ends;
 };
 
 struct dsr_Scene {
@@ -97,6 +98,6 @@ int64_t dsr_find_sector(const struct dsr_Scene *scene,
 
 // The direction vector of the camera must be normalized.
 void dsr_render(struct dsr_Surface *surface, const struct dsr_Scene *scene,
-                const struct hog_Camera *camera);
+                const struct hog_Camera *camera, int64_t current_sector);
 
 #endif // DOOM_STYLE_RENDERER_H

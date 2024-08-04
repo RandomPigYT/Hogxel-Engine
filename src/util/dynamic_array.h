@@ -63,7 +63,7 @@
     (arr)->capacity = 0; \
   } while (0)
 
-// Does not work with arrays
+// Does not work if the type is an array
 #define DA_POP(arr, index)                                                    \
   ({                                                                          \
     assert((arr)->count != 0 && "Attempted to pop from empty dynamic array"); \

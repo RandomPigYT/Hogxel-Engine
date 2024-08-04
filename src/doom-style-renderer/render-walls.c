@@ -375,7 +375,7 @@ static void dsr_render_wall(struct dsr_Surface *surface,
   if (wall->is_portal) {
     struct Portal p = { 0 };
 
-    assert(wall->shared_count < 2);
+    assert(wall->shared_count <= 2);
 
     p.sector_index = wall->shared_with[0] != drawing_sector_index
                        ? wall->shared_with[0]
@@ -442,17 +442,10 @@ static void dsr_render_wall(struct dsr_Surface *surface,
   }
 }
 
-static int64_t find_camera_sector(const struct hog_Camera *camera,
-                                  const struct dsr_Scene *scene) {
-  (void)camera;
-  (void)scene;
-
-  return -1;
-}
-
 void dsr_render_walls(struct dsr_Surface *surface,
                       const struct dsr_Scene *scene,
-                      const struct hog_Camera *camera, vec2 proj_plane_size) {
+                      const struct hog_Camera *camera, int64_t current_sector,
+                      vec2 proj_plane_size) {
   srand((int)6942080085);
   for (int32_t i = 0; i < rand() % 100; i++) {
     rand();
@@ -471,8 +464,6 @@ void dsr_render_walls(struct dsr_Surface *surface,
 
   struct PortalQueue portal_queue = { 0 };
 
-  int64_t camera_sector = find_camera_sector(camera, scene);
-
   for (uint32_t i = 0; i < scene->sectors.count; i++) {
     struct dsr_Sector *sector = &DA_AT(scene->sectors, i);
     for (uint32_t j = 0; j < sector->walls.count; j++) {
@@ -480,9 +471,12 @@ void dsr_render_walls(struct dsr_Surface *surface,
 
       struct hog_Camera temp_cam = *camera;
 
-      glm_vec3_add(temp_cam.position,
-                   (vec3){ 0.0f, sector->floor_height, 0.0f },
-                   temp_cam.position);
+      glm_vec3_add(
+        temp_cam.position,
+        (vec3){ 0.0f,
+                DA_AT(scene->sectors, (uint32_t)current_sector).floor_height,
+                0.0f },
+        temp_cam.position);
 
       uint8_t colour[4] = {
         DA_AT(palette, wall_index)[0],
@@ -491,7 +485,7 @@ void dsr_render_walls(struct dsr_Surface *surface,
         255,
       };
 
-      dsr_render_wall(surface, scene, camera_sector, i, wall_index, &temp_cam,
+      dsr_render_wall(surface, scene, current_sector, i, wall_index, &temp_cam,
                       proj_plane_size, colour, &portal_queue);
     }
   }

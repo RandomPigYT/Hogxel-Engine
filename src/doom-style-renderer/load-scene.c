@@ -38,7 +38,7 @@ struct Tokens {
 };
 
 static const char seperators[] = " \t"; // Removed
-static const char special[] = "[]#\n"; // Preseverved as tokens
+static const char special[] = "[]#,\n"; // Preseverved as tokens
 
 #define BLOCKS_GUARDS() \
   X(BLOCK_GUARD_NONE)   \
@@ -232,7 +232,7 @@ static inline uint64_t get_line_length(const struct Tokens *tokens,
                                        uint64_t index) {
   uint64_t line_length = 0;
   for (uint64_t i = index; i < tokens->count; i++) {
-    if (DA_AT(*tokens, i).view[0] == '\n') {
+    if (DA_AT(*tokens, i).view[0] == '\n' || DA_AT(*tokens, i).view[0] == '#') {
       break;
     }
 
@@ -442,7 +442,6 @@ static enum ParseErrors parse_sector(const struct Tokens *tokens,
     goto Error;
   }
 
-  // Floor height
   {
     sector->floor_height = get_float(tokens, index + SECTOR_FIELD_FLOOR_HEIGHT,
                                      &error_type__, &error_index__);
@@ -452,7 +451,6 @@ static enum ParseErrors parse_sector(const struct Tokens *tokens,
     }
   }
 
-  // Ceiling height
   {
     sector->ceil_height = get_float(tokens, index + SECTOR_FIELD_CEIL_HEIGHT,
                                     &error_type__, &error_index__);
@@ -462,8 +460,15 @@ static enum ParseErrors parse_sector(const struct Tokens *tokens,
     }
   }
 
-  // Walls
   for (uint32_t i = SECTOR_FIELDS_COUNT; i < line_length; i++) {
+    if (i != SECTOR_FIELDS_COUNT) {
+      if (DA_AT(*tokens, index + i).view[0] == ',' &&
+          DA_AT(*tokens, index + i - 1).view[0] != ',') {
+        DA_APPEND(&sector->cycle_ends, sector->walls.count - 1);
+        continue;
+      }
+    }
+
     uint32_t wall =
       get_uint32(tokens, index + i, &error_type__, &error_index__);
 
@@ -472,6 +477,10 @@ static enum ParseErrors parse_sector(const struct Tokens *tokens,
     }
 
     DA_APPEND(&sector->walls, wall);
+  }
+
+  if (sector->cycle_ends.count == 0) {
+    DA_APPEND(&sector->cycle_ends, sector->walls.count - 1);
   }
 
   *inc_by = line_length;
@@ -666,6 +675,14 @@ static enum ParseErrors parse(const struct Tokens *tokens,
 
       for (uint32_t j = 0; j < sector.walls.count; j++) {
         printf("    %d,\n", DA_AT(sector.walls, j));
+      }
+
+      printf("  },\n");
+
+      printf("  .cycle_ends = {\n");
+
+      for (uint32_t j = 0; j < sector.cycle_ends.count; j++) {
+        printf("    %d,\n", DA_AT(sector.cycle_ends, j));
       }
 
       printf("  },\n"

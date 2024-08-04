@@ -95,12 +95,12 @@ DSR_COLOUR	include/doom-style-renderer.h	/^#define DSR_COLOUR(/;"	d
 DSR_FLT_EPSILON	include/doom-style-renderer.h	/^#define DSR_FLT_EPSILON /;"	d
 DSR_PIXEL_AT	include/doom-style-renderer.h	/^#define DSR_PIXEL_AT(/;"	d
 DSR_RENDER_WALLS_H	src/doom-style-renderer/render-walls.h	/^#define DSR_RENDER_WALLS_H$/;"	d
-DSR_SCENE_INTEGRITY_H	src/doom-style-renderer/scene_integrity.h	/^#define DSR_SCENE_INTEGRITY_H$/;"	d
+DSR_SCENE_INTEGRITY_H	src/doom-style-renderer/scene-integrity.h	/^#define DSR_SCENE_INTEGRITY_H$/;"	d
 FACTOR	src/test/main.c	/^#define FACTOR /;"	d	file:
-FAIL_CONDITIONS	src/doom-style-renderer/scene_integrity.h	/^	FAIL_CONDITIONS()$/;"	e	enum:FailConditions
-FAIL_CONDITIONS	src/doom-style-renderer/scene_integrity.h	/^#define FAIL_CONDITIONS(/;"	d
+FAIL_CONDITIONS	src/doom-style-renderer/scene-integrity.h	/^	FAIL_CONDITIONS()$/;"	e	enum:FailConditions
+FAIL_CONDITIONS	src/doom-style-renderer/scene-integrity.h	/^#define FAIL_CONDITIONS(/;"	d
 FORWARD	src/test/main.c	/^  FORWARD = 0,$/;"	e	enum:direction	file:
-FailConditions	src/doom-style-renderer/scene_integrity.h	/^enum FailConditions {$/;"	g
+FailConditions	src/doom-style-renderer/scene-integrity.h	/^enum FailConditions {$/;"	g
 HEIGHT	src/test/main.c	/^#define HEIGHT /;"	d	file:
 HOG_CAMERA_H	src/common/camera.h	/^#define HOG_CAMERA_H$/;"	d
 HOG_ORTHOGRAPHIC_PROJECTION	src/common/camera.h	/^  HOG_ORTHOGRAPHIC_PROJECTION,$/;"	e	enum:hog_ProjType
@@ -150,15 +150,15 @@ WALL_FIELD_VERT2	src/doom-style-renderer/load-scene.c	/^  WALL_FIELD_VERT2,$/;"	
 WIDTH	src/test/main.c	/^#define WIDTH /;"	d	file:
 WallFields	src/doom-style-renderer/load-scene.c	/^enum WallFields {$/;"	g	file:
 X	src/doom-style-renderer/load-scene.c	/^#define X(/;"	d	file:
-X	src/doom-style-renderer/scene_integrity.c	/^#define X(/;"	d	file:
-X	src/doom-style-renderer/scene_integrity.h	/^#define X(/;"	d
+X	src/doom-style-renderer/scene-integrity.c	/^#define X(/;"	d	file:
+X	src/doom-style-renderer/scene-integrity.h	/^#define X(/;"	d
 a_bits	include/doom-style-renderer.h	/^  uint8_t a_bits;$/;"	m	struct:dsr_PixelFormat	typeref:typename:uint8_t
 a_mask	include/doom-style-renderer.h	/^  uint32_t a_mask;$/;"	m	struct:dsr_PixelFormat	typeref:typename:uint32_t
 a_shift	include/doom-style-renderer.h	/^  uint8_t a_shift;$/;"	m	struct:dsr_PixelFormat	typeref:typename:uint8_t
 all	src/doom-style-renderer/Makefile	/^all: $(TARGET)$/;"	t
 all	src/test/Makefile	/^all: $(TARGET)$/;"	t
 aspect_ratio	src/common/camera.h	/^  float aspect_ratio;$/;"	m	struct:hog_Camera	typeref:typename:float
-assert_scene_integrity	src/doom-style-renderer/scene_integrity.c	/^enum FailConditions assert_scene_integrity(struct dsr_Scene *scene,$/;"	f	typeref:enum:FailConditions
+assert_scene_integrity	src/doom-style-renderer/scene-integrity.c	/^enum FailConditions assert_scene_integrity(struct dsr_Scene *scene,$/;"	f	typeref:enum:FailConditions
 b_bits	include/doom-style-renderer.h	/^  uint8_t b_bits;$/;"	m	struct:dsr_PixelFormat	typeref:typename:uint8_t
 b_mask	include/doom-style-renderer.h	/^  uint32_t b_mask;$/;"	m	struct:dsr_PixelFormat	typeref:typename:uint32_t
 b_shift	include/doom-style-renderer.h	/^  uint8_t b_shift;$/;"	m	struct:dsr_PixelFormat	typeref:typename:uint8_t
@@ -177,35 +177,35 @@ dsr_Scene	include/doom-style-renderer.h	/^struct dsr_Scene {$/;"	s
 dsr_Sector	include/doom-style-renderer.h	/^struct dsr_Sector {$/;"	s
 dsr_Surface	include/doom-style-renderer.h	/^struct dsr_Surface {$/;"	s
 dsr_Wall	include/doom-style-renderer.h	/^struct dsr_Wall {$/;"	s
-dsr_load_scene	src/doom-style-renderer/load-scene.c	/^bool dsr_load_scene(const char *scene_path, struct dsr_Scene *scene)$/;"	f	typeref:typename:bool
+dsr_find_sector	src/doom-style-renderer/find-sector.c	/^int64_t dsr_find_sector(const struct dsr_Scene *scene,$/;"	f	typeref:typename:int64_t
+dsr_load_scene	src/doom-style-renderer/load-scene.c	/^bool dsr_load_scene(const char *scene_path, struct dsr_Scene *scene) {$/;"	f	typeref:typename:bool
 dsr_render	src/doom-style-renderer/renderer.c	/^void dsr_render(struct dsr_Surface *surface, const struct dsr_Scene *scene,$/;"	f	typeref:typename:void
 dsr_render_wall	src/doom-style-renderer/render-walls.c	/^static void dsr_render_wall(struct dsr_Surface *surface,$/;"	f	typeref:typename:void	file:
 dsr_render_walls	src/doom-style-renderer/render-walls.c	/^void dsr_render_walls(struct dsr_Surface *surface,$/;"	f	typeref:typename:void
-fail_conditions	src/doom-style-renderer/scene_integrity.c	/^const char *fail_conditions[] = {$/;"	v	typeref:typename:const char * []
+fail_conditions	src/doom-style-renderer/scene-integrity.c	/^const char *fail_conditions[] = {$/;"	v	typeref:typename:const char * []
 far_clipping_plane	src/common/camera.h	/^  float far_clipping_plane;$/;"	m	struct:hog_Camera	typeref:typename:float
-find_camera_sector	src/doom-style-renderer/render-walls.c	/^static int64_t find_camera_sector(const struct hog_Camera *camera,$/;"	f	typeref:typename:int64_t	file:
 fio_read_file	src/util/fileIO.h	/^char *fio_read_file(const char *path) {$/;"	f	typeref:typename:char *
 floor_height	include/doom-style-renderer.h	/^  float floor_height, ceil_height;$/;"	m	struct:dsr_Sector	typeref:typename:float
 fov	src/common/camera.h	/^  float fov; \/\/ In radians$/;"	m	struct:hog_Camera	typeref:typename:float
 g_bits	include/doom-style-renderer.h	/^  uint8_t g_bits;$/;"	m	struct:dsr_PixelFormat	typeref:typename:uint8_t
 g_mask	include/doom-style-renderer.h	/^  uint32_t g_mask;$/;"	m	struct:dsr_PixelFormat	typeref:typename:uint32_t
 g_shift	include/doom-style-renderer.h	/^  uint8_t g_shift;$/;"	m	struct:dsr_PixelFormat	typeref:typename:uint8_t
-get_block_type	src/doom-style-renderer/load-scene.c	/^static enum ParseErrors get_block_type(enum BlockGuard guard,$/;"	f	typeref:enum:ParseErrors	file:
+get_block_type	src/doom-style-renderer/load-scene.c	/^get_block_type(enum BlockGuard guard, enum BlockType old, enum BlockType *new) {$/;"	f	typeref:enum:ParseErrors	file:
 get_float	src/doom-style-renderer/load-scene.c	/^static float get_float(const struct Tokens *tokens, uint64_t index,$/;"	f	typeref:typename:float	file:
 get_line_length	src/doom-style-renderer/load-scene.c	/^static inline uint64_t get_line_length(const struct Tokens *tokens,$/;"	f	typeref:typename:uint64_t	file:
 get_relative_coords	src/doom-style-renderer/render-walls.c	/^static inline void get_relative_coords(const struct hog_Camera *camera,$/;"	f	typeref:typename:void	file:
 get_uint32	src/doom-style-renderer/load-scene.c	/^static uint32_t get_uint32(const struct Tokens *tokens, uint64_t index,$/;"	f	typeref:typename:uint32_t	file:
-get_world_coords	src/doom-style-renderer/render-walls.c	/^static inline void get_world_coords(const vec2 map_coords, vec4 world_coords)$/;"	f	typeref:typename:void	file:
+get_world_coords	src/doom-style-renderer/render-walls.c	/^static inline void get_world_coords(const vec2 map_coords, vec4 world_coords) {$/;"	f	typeref:typename:void	file:
 height	include/doom-style-renderer.h	/^  int32_t width, height;$/;"	m	struct:dsr_Surface	typeref:typename:int32_t
 hog_Camera	src/common/camera.h	/^struct hog_Camera {$/;"	s
 hog_ProjType	src/common/camera.h	/^enum hog_ProjType {$/;"	g
-int_clamp	src/doom-style-renderer/render-walls.c	/^static inline int32_t int_clamp(int32_t val, int32_t min_val, int32_t max_val)$/;"	f	typeref:typename:int32_t	file:
+int_clamp	src/doom-style-renderer/render-walls.c	/^static inline int32_t int_clamp(int32_t val, int32_t min_val, int32_t max_val) {$/;"	f	typeref:typename:int32_t	file:
 intersect_line_segments	src/doom-style-renderer/render-walls.c	/^static bool intersect_line_segments(const vec4 line1[2], const vec4 line2[2],$/;"	f	typeref:typename:bool	file:
 is_portal	include/doom-style-renderer.h	/^  bool is_portal;$/;"	m	struct:dsr_Wall	typeref:typename:bool
-is_zero	src/doom-style-renderer/render-walls.c	/^static inline bool is_zero(float n, float eps)$/;"	f	typeref:typename:bool	file:
+is_zero	src/doom-style-renderer/render-walls.c	/^static inline bool is_zero(float n, float eps) {$/;"	f	typeref:typename:bool	file:
 items	src/doom-style-renderer/load-scene.c	/^  struct StringView *items;$/;"	m	struct:Tokens	typeref:struct:StringView *	file:
 length	src/doom-style-renderer/load-scene.c	/^  uint64_t length;$/;"	m	struct:StringView	typeref:typename:uint64_t	file:
-main	src/test/main.c	/^int main(int argc, char **argv)$/;"	f	typeref:typename:int
+main	src/test/main.c	/^int main(int argc, char **argv) {$/;"	f	typeref:typename:int
 moving	src/test/main.c	/^bool moving[DIR_COUNT] = { 0 };$/;"	v	typeref:typename:bool[]
 near_clipping_plane	src/common/camera.h	/^  float near_clipping_plane;$/;"	m	struct:hog_Camera	typeref:typename:float
 parse	src/doom-style-renderer/load-scene.c	/^static enum ParseErrors parse(const struct Tokens *tokens,$/;"	f	typeref:enum:ParseErrors	file:
@@ -226,11 +226,11 @@ sector_index	src/doom-style-renderer/render-walls.c	/^  uint32_t sector_index;$/
 seperators	src/doom-style-renderer/load-scene.c	/^static const char seperators[] = " \\t"; \/\/ Removed$/;"	v	typeref:typename:const char[]	file:
 shared_count	include/doom-style-renderer.h	/^  uint8_t shared_count;$/;"	m	struct:dsr_Wall	typeref:typename:uint8_t
 shared_with	include/doom-style-renderer.h	/^  uint32_t shared_with[2]; \/\/ Indices of sectors that share this wall$/;"	m	struct:dsr_Wall	typeref:typename:uint32_t[2]
-special	src/doom-style-renderer/load-scene.c	/^static const char special[] = "[]#\\n"; \/\/ Preseverved as tokens$/;"	v	typeref:typename:const char[]	file:
+special	src/doom-style-renderer/load-scene.c	/^static const char special[] = "[]#,\\n"; \/\/ Preseverved as tokens$/;"	v	typeref:typename:const char[]	file:
 stride	include/doom-style-renderer.h	/^  int32_t stride; \/\/ In bytes$/;"	m	struct:dsr_Surface	typeref:typename:int32_t
 through	src/doom-style-renderer/render-walls.c	/^  uint32_t through;$/;"	m	struct:Portal	typeref:typename:uint32_t	file:
 to_screen_space	src/doom-style-renderer/render-walls.c	/^static inline void to_screen_space(const struct dsr_Surface *surface,$/;"	f	typeref:typename:void	file:
-tokenize	src/doom-style-renderer/load-scene.c	/^static struct Tokens tokenize(const char *src)$/;"	f	typeref:struct:Tokens	file:
+tokenize	src/doom-style-renderer/load-scene.c	/^static struct Tokens tokenize(const char *src) {$/;"	f	typeref:struct:Tokens	file:
 turning	src/test/main.c	/^int32_t turning = 0;$/;"	v	typeref:typename:int32_t
 update_dsr_surface	src/test/main.c	/^void update_dsr_surface(struct dsr_Surface *dsr_surface,$/;"	f	typeref:typename:void
 vertices	include/doom-style-renderer.h	/^  uint64_t vertices[2]; \/\/ Vertex indices$/;"	m	struct:dsr_Wall	typeref:typename:uint64_t[2]

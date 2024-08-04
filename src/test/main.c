@@ -288,7 +288,9 @@ int main(int argc, char **argv) {
     }
 
     //glm_vec3_print(cam.position, stdout);
-    dsr_render(&dsr_surface, &scene, &cam);
+    if (scene.sectors.count > 0) {
+      dsr_render(&dsr_surface, &scene, &cam, 0);
+    }
 
     SDL_UpdateWindowSurface(window);
   }
