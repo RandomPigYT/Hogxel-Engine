@@ -4,7 +4,9 @@
 
 #include "doom-style-renderer.h"
 
-void dsr_render_walls(struct dsr_Surface *surface,
+#include "util/thread_pool.h"
+
+void dsr_render_walls(struct tp_ThreadPool *pool, struct dsr_Surface *surface,
                       const struct dsr_Scene *scene,
                       const struct hog_Camera *camera, int64_t current_sector,
                       vec2 proj_plane_size);

@@ -1,6 +1,7 @@
 #include "render-walls.h"
 #include "doom-style-renderer.h"
 #include "util/dynamic_array.h"
+#include "util/thread_pool.h"
 
 #include <cglm/include/cglm/cglm.h>
 
@@ -293,13 +294,63 @@ static inline void to_screen_space(const struct dsr_Surface *surface,
            (surface->height - 1));
 }
 
-static void dsr_render_wall(struct dsr_Surface *surface,
-                            const struct dsr_Scene *scene,
-                            uint32_t cam_sector_index,
-                            uint32_t drawing_sector_index, uint32_t wall_index,
-                            const struct hog_Camera *camera,
-                            const vec2 proj_plane_size, uint8_t wall_colour[4],
-                            struct PortalQueue *portal_queue) {
+struct DrawWallSection {
+  struct dsr_Surface *surface;
+
+  int32_t screen_space[4][2];
+  int32_t x1, x2, z1, z2; // Range of the entire wall
+
+  int32_t x_range[2]; // Range of wall section
+  int32_t sign;
+  const struct hog_Camera *camera;
+
+  uint8_t colour[4];
+};
+
+static void *draw_wall_section(void *input) {
+  struct DrawWallSection *params = input;
+  input = NULL;
+
+  int32_t l = params->x2 - params->x1;
+  for (int32_t x = params->x_range[0]; x <= params->x_range[1]; x++) {
+    float t = (float)(x - params->x1) / (float)l;
+
+    float depth_lerp =
+      glm_lerp(params->z1, params->z2, t) / params->camera->far_clipping_plane;
+
+    if (params->sign < 0) {
+      t = 1.0f - t;
+    }
+
+    int32_t y1 = lround(
+      glm_lerp(params->screen_space[0][1], params->screen_space[3][1], t));
+    int32_t y2 = lround(
+      glm_lerp(params->screen_space[1][1], params->screen_space[2][1], t));
+
+    uint8_t c[4] = {
+      glm_lerp(params->colour[0] / 255.0f, 0.0f, depth_lerp) * 255.0f,
+      glm_lerp(params->colour[1] / 255.0f, 0.0f, depth_lerp) * 255.0f,
+      glm_lerp(params->colour[2] / 255.0f, 0.0f, depth_lerp) * 255.0f,
+      255,
+    };
+
+    draw_vertical_line(params->surface, x, y1, y2, c);
+    draw_vertical_line(params->surface, x, 0, y1,
+                       (uint8_t[4]){ 35, 35, 35, 255 });
+    draw_vertical_line(params->surface, x, y2, params->surface->height - 1,
+                       (uint8_t[4]){ 100, 24, 24, 255 });
+  }
+
+  free(params);
+  return NULL;
+}
+
+static void
+dsr_render_wall(struct tp_ThreadPool *pool, struct dsr_Surface *surface,
+                const struct dsr_Scene *scene, uint32_t cam_sector_index,
+                uint32_t drawing_sector_index, uint32_t wall_index,
+                const struct hog_Camera *camera, const vec2 proj_plane_size,
+                uint8_t wall_colour[4], struct PortalQueue *portal_queue) {
   (void)cam_sector_index;
 
   struct dsr_Wall *wall = &DA_AT(scene->walls, wall_index);
@@ -415,34 +466,74 @@ static void dsr_render_wall(struct dsr_Surface *surface,
   float t = 0.0f;
 
   int32_t sign = glm_sign(screen_space[2][0] - screen_space[0][0]);
-  for (int32_t x = x1; x <= x2; x++) {
-    t = (float)(x - x1) / (float)l;
 
-    float depth_lerp = glm_lerp(z1, z2, t) / camera->far_clipping_plane;
+  if (pool == NULL) {
+    for (int32_t x = x1; x <= x2; x++) {
+      t = (float)(x - x1) / (float)l;
 
-    if (sign < 0) {
-      t = 1.0f - t;
+      float depth_lerp = glm_lerp(z1, z2, t) / camera->far_clipping_plane;
+
+      if (sign < 0) {
+        t = 1.0f - t;
+      }
+
+      y1 = lround(glm_lerp(screen_space[0][1], screen_space[3][1], t));
+      y2 = lround(glm_lerp(screen_space[1][1], screen_space[2][1], t));
+
+      uint8_t c[4] = {
+        glm_lerp(wall_colour[0] / 255.0f, 0.0f, depth_lerp) * 255.0f,
+        glm_lerp(wall_colour[1] / 255.0f, 0.0f, depth_lerp) * 255.0f,
+        glm_lerp(wall_colour[2] / 255.0f, 0.0f, depth_lerp) * 255.0f,
+        255,
+      };
+
+      //draw_vertical_line(surface, x, y1, y2, wall_colour);
+      draw_vertical_line(surface, x, y1, y2, c);
+      draw_vertical_line(surface, x, 0, y1, (uint8_t[4]){ 35, 35, 35, 255 });
+      draw_vertical_line(surface, x, y2, surface->height - 1,
+                         (uint8_t[4]){ 100, 24, 24, 255 });
     }
 
-    y1 = lround(glm_lerp(screen_space[0][1], screen_space[3][1], t));
-    y2 = lround(glm_lerp(screen_space[1][1], screen_space[2][1], t));
+  } else {
+    uint32_t section_size = l / pool->count;
 
-    uint8_t c[4] = {
-      glm_lerp(wall_colour[0] / 255.0f, 0.0f, depth_lerp) * 255.0f,
-      glm_lerp(wall_colour[1] / 255.0f, 0.0f, depth_lerp) * 255.0f,
-      glm_lerp(wall_colour[2] / 255.0f, 0.0f, depth_lerp) * 255.0f,
-      255,
-    };
+    DA_TYPE(tp_JobHandle) handles = { 0 };
 
-    //draw_vertical_line(surface, x, y1, y2, wall_colour);
-    draw_vertical_line(surface, x, y1, y2, c);
-    draw_vertical_line(surface, x, 0, y1, (uint8_t[4]){ 35, 35, 35, 255 });
-    draw_vertical_line(surface, x, y2, surface->height - 1,
-                       (uint8_t[4]){ 100, 24, 24, 255 });
+    for (uint32_t i = 0; i < pool->count; i++) {
+      struct DrawWallSection *tmp = malloc(sizeof(*tmp));
+
+      tmp->surface = surface;
+      memcpy(tmp->screen_space, screen_space, sizeof(screen_space));
+
+      tmp->x1 = x1;
+      tmp->z1 = z1;
+      tmp->x2 = x2;
+      tmp->z2 = z2;
+
+      tmp->x_range[0] = glm_imin(x1 + i * section_size, x2);
+      tmp->x_range[1] = glm_imax(tmp->x_range[0] + section_size - 1, x2);
+
+      tmp->sign = sign;
+
+      tmp->camera = camera;
+
+      memcpy(tmp->colour, wall_colour, 4 * sizeof(*wall_colour));
+      //for (uint8_t j = 0; j < 4; j++) {
+      //  tmp->colour[j] = wall_colour[j];
+      //}
+
+      DA_APPEND(&handles, tp_add_job(pool, draw_wall_section, tmp));
+    }
+
+    for (uint32_t i = 0; i < handles.count; i++) {
+      tp_wait_job(pool, DA_AT(handles, i));
+    }
+
+    DA_FREE(&handles);
   }
 }
 
-void dsr_render_walls(struct dsr_Surface *surface,
+void dsr_render_walls(struct tp_ThreadPool *pool, struct dsr_Surface *surface,
                       const struct dsr_Scene *scene,
                       const struct hog_Camera *camera, int64_t current_sector,
                       vec2 proj_plane_size) {
@@ -485,8 +576,8 @@ void dsr_render_walls(struct dsr_Surface *surface,
         255,
       };
 
-      dsr_render_wall(surface, scene, current_sector, i, wall_index, &temp_cam,
-                      proj_plane_size, colour, &portal_queue);
+      dsr_render_wall(pool, surface, scene, current_sector, i, wall_index,
+                      &temp_cam, proj_plane_size, colour, &portal_queue);
     }
   }
 

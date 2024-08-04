@@ -92,6 +92,7 @@ DIR_COUNT	src/test/main.c	/^  DIR_COUNT,$/;"	e	enum:direction	file:
 DOOM_STYLE_RENDERER_H	include/doom-style-renderer.h	/^#define DOOM_STYLE_RENDERER_H$/;"	d
 DOWN	src/test/main.c	/^  DOWN,$/;"	e	enum:direction	file:
 DSR_COLOUR	include/doom-style-renderer.h	/^#define DSR_COLOUR(/;"	d
+DSR_DEFAULT_THREAD_COUNT	include/doom-style-renderer.h	/^#define DSR_DEFAULT_THREAD_COUNT /;"	d
 DSR_FLT_EPSILON	include/doom-style-renderer.h	/^#define DSR_FLT_EPSILON /;"	d
 DSR_PIXEL_AT	include/doom-style-renderer.h	/^#define DSR_PIXEL_AT(/;"	d
 DSR_RENDER_WALLS_H	src/doom-style-renderer/render-walls.h	/^#define DSR_RENDER_WALLS_H$/;"	d
@@ -143,6 +144,8 @@ UTIL_DYNAMIC_ARRAY	src/util/dynamic_array.h	/^#define UTIL_DYNAMIC_ARRAY$/;"	d
 UTIL_FILE_IO_H	src/util/fileIO.h	/^#define UTIL_FILE_IO_H$/;"	d
 UTIL_FILE_IO_IMPLEMENTATION	src/doom-style-renderer/load-scene.c	/^#define UTIL_FILE_IO_IMPLEMENTATION$/;"	d	file:
 UTIL_FILE_IO_IMPLEMENTATION	src/util/fileIO.h	/^#define UTIL_FILE_IO_IMPLEMENTATION$/;"	d
+UTIL_THREAD_POOL_H	src/util/thread_pool.h	/^#define UTIL_THREAD_POOL_H$/;"	d
+UTIL_THREAD_POOL_IMPLEMENTATION	src/util/thread_pool.h	/^#define UTIL_THREAD_POOL_IMPLEMENTATION$/;"	d
 WALL_FIELDS_COUNT	src/doom-style-renderer/load-scene.c	/^  WALL_FIELDS_COUNT,$/;"	e	enum:WallFields	file:
 WALL_FIELD_IS_PORTAL	src/doom-style-renderer/load-scene.c	/^  WALL_FIELD_IS_PORTAL,$/;"	e	enum:WallFields	file:
 WALL_FIELD_VERT1	src/doom-style-renderer/load-scene.c	/^  WALL_FIELD_VERT1,$/;"	e	enum:WallFields	file:
@@ -152,6 +155,10 @@ WallFields	src/doom-style-renderer/load-scene.c	/^enum WallFields {$/;"	g	file:
 X	src/doom-style-renderer/load-scene.c	/^#define X(/;"	d	file:
 X	src/doom-style-renderer/scene-integrity.c	/^#define X(/;"	d	file:
 X	src/doom-style-renderer/scene-integrity.h	/^#define X(/;"	d
+__anon5585f6b00108	src/util/thread_pool.h	/^  struct {$/;"	s	struct:tp_ThreadPool
+__anon5585f6b00208	src/util/thread_pool.h	/^  struct {$/;"	s	struct:tp_ThreadPool
+__anon5585f6b00308	src/util/thread_pool.h	/^  struct {$/;"	s	struct:tp_ThreadPool
+__anon5585f6b00408	src/util/thread_pool.h	/^  struct {$/;"	s	struct:tp_ThreadPool
 a_bits	include/doom-style-renderer.h	/^  uint8_t a_bits;$/;"	m	struct:dsr_PixelFormat	typeref:typename:uint8_t
 a_mask	include/doom-style-renderer.h	/^  uint32_t a_mask;$/;"	m	struct:dsr_PixelFormat	typeref:typename:uint32_t
 a_shift	include/doom-style-renderer.h	/^  uint8_t a_shift;$/;"	m	struct:dsr_PixelFormat	typeref:typename:uint8_t
@@ -168,7 +175,9 @@ bytes_per_pixel	include/doom-style-renderer.h	/^  uint8_t bytes_per_pixel;$/;"	m
 capacity	src/doom-style-renderer/load-scene.c	/^  uint64_t capacity;$/;"	m	struct:Tokens	typeref:typename:uint64_t	file:
 ceil_height	include/doom-style-renderer.h	/^  float floor_height, ceil_height;$/;"	m	struct:dsr_Sector	typeref:typename:float
 clipped_wall_positions	src/doom-style-renderer/render-walls.c	/^static bool clipped_wall_positions(const vec4 relative_coords[2],$/;"	f	typeref:typename:bool	file:
+completed_mutex	src/util/thread_pool.h	/^    pthread_mutex_t completed_mutex;$/;"	m	struct:tp_ThreadPool::__anon5585f6b00308	typeref:typename:pthread_mutex_t
 count	src/doom-style-renderer/load-scene.c	/^  uint64_t count;$/;"	m	struct:Tokens	typeref:typename:uint64_t	file:
+count	src/util/thread_pool.h	/^  uint32_t count;$/;"	m	struct:tp_ThreadPool	typeref:typename:uint32_t
 direction	src/common/camera.h	/^  vec3 direction;$/;"	m	struct:hog_Camera	typeref:typename:vec3
 direction	src/test/main.c	/^enum direction {$/;"	g	file:
 draw_vertical_line	src/doom-style-renderer/render-walls.c	/^static void draw_vertical_line(struct dsr_Surface *surface, int32_t x,$/;"	f	typeref:typename:void	file:
@@ -180,8 +189,9 @@ dsr_Wall	include/doom-style-renderer.h	/^struct dsr_Wall {$/;"	s
 dsr_find_sector	src/doom-style-renderer/find-sector.c	/^int64_t dsr_find_sector(const struct dsr_Scene *scene,$/;"	f	typeref:typename:int64_t
 dsr_load_scene	src/doom-style-renderer/load-scene.c	/^bool dsr_load_scene(const char *scene_path, struct dsr_Scene *scene) {$/;"	f	typeref:typename:bool
 dsr_render	src/doom-style-renderer/renderer.c	/^void dsr_render(struct dsr_Surface *surface, const struct dsr_Scene *scene,$/;"	f	typeref:typename:void
-dsr_render_wall	src/doom-style-renderer/render-walls.c	/^static void dsr_render_wall(struct dsr_Surface *surface,$/;"	f	typeref:typename:void	file:
-dsr_render_walls	src/doom-style-renderer/render-walls.c	/^void dsr_render_walls(struct dsr_Surface *surface,$/;"	f	typeref:typename:void
+dsr_render_multithreaded	src/doom-style-renderer/renderer.c	/^void dsr_render_multithreaded(int32_t num_threads, struct dsr_Surface *surface,$/;"	f	typeref:typename:void
+dsr_render_wall	src/doom-style-renderer/render-walls.c	/^dsr_render_wall(struct tp_ThreadPool *pool, struct dsr_Surface *surface,$/;"	f	typeref:typename:void	file:
+dsr_render_walls	src/doom-style-renderer/render-walls.c	/^void dsr_render_walls(struct tp_ThreadPool *pool, struct dsr_Surface *surface,$/;"	f	typeref:typename:void
 fail_conditions	src/doom-style-renderer/scene-integrity.c	/^const char *fail_conditions[] = {$/;"	v	typeref:typename:const char * []
 far_clipping_plane	src/common/camera.h	/^  float far_clipping_plane;$/;"	m	struct:hog_Camera	typeref:typename:float
 fio_read_file	src/util/fileIO.h	/^char *fio_read_file(const char *path) {$/;"	f	typeref:typename:char *
@@ -196,18 +206,25 @@ get_line_length	src/doom-style-renderer/load-scene.c	/^static inline uint64_t ge
 get_relative_coords	src/doom-style-renderer/render-walls.c	/^static inline void get_relative_coords(const struct hog_Camera *camera,$/;"	f	typeref:typename:void	file:
 get_uint32	src/doom-style-renderer/load-scene.c	/^static uint32_t get_uint32(const struct Tokens *tokens, uint64_t index,$/;"	f	typeref:typename:uint32_t	file:
 get_world_coords	src/doom-style-renderer/render-walls.c	/^static inline void get_world_coords(const vec2 map_coords, vec4 world_coords) {$/;"	f	typeref:typename:void	file:
+handle	src/util/thread_pool.h	/^  tp_JobHandle handle;$/;"	m	struct:tp_Job	typeref:typename:tp_JobHandle
+handle_counter	src/util/thread_pool.h	/^    uint64_t handle_counter;$/;"	m	struct:tp_ThreadPool::__anon5585f6b00208	typeref:typename:uint64_t
+handle_counter_mutex	src/util/thread_pool.h	/^    pthread_mutex_t handle_counter_mutex;$/;"	m	struct:tp_ThreadPool::__anon5585f6b00208	typeref:typename:pthread_mutex_t
 height	include/doom-style-renderer.h	/^  int32_t width, height;$/;"	m	struct:dsr_Surface	typeref:typename:int32_t
 hog_Camera	src/common/camera.h	/^struct hog_Camera {$/;"	s
 hog_ProjType	src/common/camera.h	/^enum hog_ProjType {$/;"	g
+in	src/util/thread_pool.h	/^  void *in;$/;"	m	struct:tp_Job	typeref:typename:void *
 int_clamp	src/doom-style-renderer/render-walls.c	/^static inline int32_t int_clamp(int32_t val, int32_t min_val, int32_t max_val) {$/;"	f	typeref:typename:int32_t	file:
 intersect_line_segments	src/doom-style-renderer/render-walls.c	/^static bool intersect_line_segments(const vec4 line1[2], const vec4 line2[2],$/;"	f	typeref:typename:bool	file:
 is_portal	include/doom-style-renderer.h	/^  bool is_portal;$/;"	m	struct:dsr_Wall	typeref:typename:bool
 is_zero	src/doom-style-renderer/render-walls.c	/^static inline bool is_zero(float n, float eps) {$/;"	f	typeref:typename:bool	file:
 items	src/doom-style-renderer/load-scene.c	/^  struct StringView *items;$/;"	m	struct:Tokens	typeref:struct:StringView *	file:
+job	src/util/thread_pool.h	/^  tp_JobCallback job;$/;"	m	struct:tp_Job	typeref:typename:tp_JobCallback
+job_mutex	src/util/thread_pool.h	/^    pthread_mutex_t job_mutex;$/;"	m	struct:tp_ThreadPool::__anon5585f6b00108	typeref:typename:pthread_mutex_t
 length	src/doom-style-renderer/load-scene.c	/^  uint64_t length;$/;"	m	struct:StringView	typeref:typename:uint64_t	file:
 main	src/test/main.c	/^int main(int argc, char **argv) {$/;"	f	typeref:typename:int
 moving	src/test/main.c	/^bool moving[DIR_COUNT] = { 0 };$/;"	v	typeref:typename:bool[]
 near_clipping_plane	src/common/camera.h	/^  float near_clipping_plane;$/;"	m	struct:hog_Camera	typeref:typename:float
+out	src/util/thread_pool.h	/^  void *out;$/;"	m	struct:tp_Job	typeref:typename:void *
 parse	src/doom-style-renderer/load-scene.c	/^static enum ParseErrors parse(const struct Tokens *tokens,$/;"	f	typeref:enum:ParseErrors	file:
 parse_block_guard	src/doom-style-renderer/load-scene.c	/^static enum ParseErrors parse_block_guard(const struct Tokens *tokens,$/;"	f	typeref:enum:ParseErrors	file:
 parse_errors	src/doom-style-renderer/load-scene.c	/^static const char *parse_errors[] = { $/;"	v	typeref:typename:const char * []	file:
@@ -216,21 +233,34 @@ parse_vert	src/doom-style-renderer/load-scene.c	/^static enum ParseErrors parse_
 parse_wall	src/doom-style-renderer/load-scene.c	/^static enum ParseErrors parse_wall(const struct Tokens *tokens, uint64_t index,$/;"	f	typeref:enum:ParseErrors	file:
 pixel_format	include/doom-style-renderer.h	/^  struct dsr_PixelFormat pixel_format;$/;"	m	struct:dsr_Surface	typeref:struct:dsr_PixelFormat
 pixels	include/doom-style-renderer.h	/^  void *pixels;$/;"	m	struct:dsr_Surface	typeref:typename:void *
+pool	src/util/thread_pool.h	/^  pthread_t *pool;$/;"	m	struct:tp_ThreadPool	typeref:typename:pthread_t *
 position	src/common/camera.h	/^  vec3 position;$/;"	m	struct:hog_Camera	typeref:typename:vec3
 proj_type	src/common/camera.h	/^  enum hog_ProjType proj_type;$/;"	m	struct:hog_Camera	typeref:enum:hog_ProjType
 r_bits	include/doom-style-renderer.h	/^  uint8_t r_bits;$/;"	m	struct:dsr_PixelFormat	typeref:typename:uint8_t
 r_mask	include/doom-style-renderer.h	/^  uint32_t r_mask;$/;"	m	struct:dsr_PixelFormat	typeref:typename:uint32_t
 r_shift	include/doom-style-renderer.h	/^  uint8_t r_shift;$/;"	m	struct:dsr_PixelFormat	typeref:typename:uint8_t
+render_impl	src/doom-style-renderer/renderer.c	/^static void render_impl(struct dsr_Surface *surface,$/;"	f	typeref:typename:void	file:
 screen_space	src/doom-style-renderer/render-walls.c	/^  int32_t screen_space[4][2];$/;"	m	struct:Portal	typeref:typename:int32_t[4][2]	file:
 sector_index	src/doom-style-renderer/render-walls.c	/^  uint32_t sector_index;$/;"	m	struct:Portal	typeref:typename:uint32_t	file:
 seperators	src/doom-style-renderer/load-scene.c	/^static const char seperators[] = " \\t"; \/\/ Removed$/;"	v	typeref:typename:const char[]	file:
 shared_count	include/doom-style-renderer.h	/^  uint8_t shared_count;$/;"	m	struct:dsr_Wall	typeref:typename:uint8_t
 shared_with	include/doom-style-renderer.h	/^  uint32_t shared_with[2]; \/\/ Indices of sectors that share this wall$/;"	m	struct:dsr_Wall	typeref:typename:uint32_t[2]
+should_exit	src/util/thread_pool.h	/^    bool should_exit;$/;"	m	struct:tp_ThreadPool::__anon5585f6b00408	typeref:typename:bool
+should_exit_mutex	src/util/thread_pool.h	/^    pthread_mutex_t should_exit_mutex;$/;"	m	struct:tp_ThreadPool::__anon5585f6b00408	typeref:typename:pthread_mutex_t
 special	src/doom-style-renderer/load-scene.c	/^static const char special[] = "[]#,\\n"; \/\/ Preseverved as tokens$/;"	v	typeref:typename:const char[]	file:
 stride	include/doom-style-renderer.h	/^  int32_t stride; \/\/ In bytes$/;"	m	struct:dsr_Surface	typeref:typename:int32_t
 through	src/doom-style-renderer/render-walls.c	/^  uint32_t through;$/;"	m	struct:Portal	typeref:typename:uint32_t	file:
 to_screen_space	src/doom-style-renderer/render-walls.c	/^static inline void to_screen_space(const struct dsr_Surface *surface,$/;"	f	typeref:typename:void	file:
 tokenize	src/doom-style-renderer/load-scene.c	/^static struct Tokens tokenize(const char *src) {$/;"	f	typeref:struct:Tokens	file:
+tp_Job	src/util/thread_pool.h	/^struct tp_Job {$/;"	s
+tp_JobCallback	src/util/thread_pool.h	/^typedef void *(*tp_JobCallback)(void *input);$/;"	t	typeref:typename:void * (*)(void * input)
+tp_JobHandle	src/util/thread_pool.h	/^typedef uint64_t tp_JobHandle;$/;"	t	typeref:typename:uint64_t
+tp_ThreadPool	src/util/thread_pool.h	/^struct tp_ThreadPool {$/;"	s
+tp_add_job	src/util/thread_pool.h	/^tp_JobHandle tp_add_job(struct tp_ThreadPool *pool, tp_JobCallback job,$/;"	f	typeref:typename:tp_JobHandle
+tp_create_pool	src/util/thread_pool.h	/^struct tp_ThreadPool *tp_create_pool(uint32_t num_threads) {$/;"	f	typeref:struct:tp_ThreadPool *
+tp_free_pool	src/util/thread_pool.h	/^void tp_free_pool(struct tp_ThreadPool *pool) {$/;"	f	typeref:typename:void
+tp_wait_job	src/util/thread_pool.h	/^void *tp_wait_job(struct tp_ThreadPool *pool, tp_JobHandle handle) {$/;"	f	typeref:typename:void *
+tp_worker	src/util/thread_pool.h	/^static void *tp_worker(void *p) {$/;"	f	typeref:typename:void *
 turning	src/test/main.c	/^int32_t turning = 0;$/;"	v	typeref:typename:int32_t
 update_dsr_surface	src/test/main.c	/^void update_dsr_surface(struct dsr_Surface *dsr_surface,$/;"	f	typeref:typename:void
 vertices	include/doom-style-renderer.h	/^  uint64_t vertices[2]; \/\/ Vertex indices$/;"	m	struct:dsr_Wall	typeref:typename:uint64_t[2]

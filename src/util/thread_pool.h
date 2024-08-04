@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
+#include <unistd.h>
 
 typedef void *(*tp_JobCallback)(void *input);
 typedef uint64_t tp_JobHandle;
@@ -31,6 +32,11 @@ struct tp_ThreadPool {
   };
 
   struct {
+    uint64_t handle_counter;
+    pthread_mutex_t handle_counter_mutex;
+  };
+
+  struct {
     DA_TYPE(struct tp_Job) completed;
     pthread_mutex_t completed_mutex;
   };
@@ -50,13 +56,13 @@ tp_JobHandle tp_add_job(struct tp_ThreadPool *pool, tp_JobCallback job,
 void *tp_wait_job(struct tp_ThreadPool *pool, tp_JobHandle handle);
 
 // Takes ownership of pool and frees it.
+// if pool == NULL, tp_free_pool does nothing.
 void tp_free_pool(struct tp_ThreadPool *pool);
 
+//#define UTIL_THREAD_POOL_IMPLEMENTATION
 #ifdef UTIL_THREAD_POOL_IMPLEMENTATION
 
-static uint64_t g_job_handle_counter = 0;
-
-static void *tp_worker(void *p) {
+void *tp_worker(void *p) {
   struct tp_ThreadPool *pool = p;
 
   bool should_exit;
@@ -74,18 +80,23 @@ static void *tp_worker(void *p) {
 
     pthread_mutex_lock(&pool->job_mutex);
 
+    bool has_job = false;
     if (pool->job_queue.count != 0) {
       job = DA_POP(&pool->job_queue, 0);
+      has_job = true;
     }
 
     pthread_mutex_unlock(&pool->job_mutex);
 
-    job.out = job.job(job.in);
+    if (has_job) {
+      job.out = job.job(job.in);
 
-    pthread_mutex_lock(&pool->completed_mutex);
-    DA_APPEND(&pool->completed, job);
-    pthread_mutex_unlock(&pool->completed_mutex);
+      pthread_mutex_lock(&pool->completed_mutex);
+      DA_APPEND(&pool->completed, job);
+      pthread_mutex_unlock(&pool->completed_mutex);
+    }
 
+    //usleep(100);
   } while (1);
 
   return NULL;
@@ -101,6 +112,8 @@ struct tp_ThreadPool *tp_create_pool(uint32_t num_threads) {
 
   pthread_mutex_init(&pool->job_mutex, NULL);
   pthread_mutex_init(&pool->completed_mutex, NULL);
+
+  pthread_mutex_init(&pool->handle_counter_mutex, NULL);
 
   pool->should_exit = false;
   pthread_mutex_init(&pool->should_exit_mutex, NULL);
@@ -120,19 +133,19 @@ struct tp_ThreadPool *tp_create_pool(uint32_t num_threads) {
     }
   }
 
-  g_job_handle_counter = 0;
-
   return pool;
 }
 
 tp_JobHandle tp_add_job(struct tp_ThreadPool *pool, tp_JobCallback job,
                         void *input) {
+  pthread_mutex_lock(&pool->handle_counter_mutex);
   struct tp_Job j = {
-    .handle = g_job_handle_counter++,
+    .handle = pool->handle_counter++,
     .job = job,
     .in = input,
     .out = NULL,
   };
+  pthread_mutex_unlock(&pool->handle_counter_mutex);
 
   pthread_mutex_lock(&pool->job_mutex);
   DA_APPEND(&pool->job_queue, j);
@@ -163,6 +176,10 @@ void *tp_wait_job(struct tp_ThreadPool *pool, tp_JobHandle handle) {
 }
 
 void tp_free_pool(struct tp_ThreadPool *pool) {
+  if (pool == NULL) {
+    return;
+  }
+
   pthread_mutex_lock(&pool->should_exit_mutex);
   pool->should_exit = true;
   pthread_mutex_unlock(&pool->should_exit_mutex);
@@ -178,6 +195,7 @@ void tp_free_pool(struct tp_ThreadPool *pool) {
   pthread_mutex_destroy(&pool->job_mutex);
   pthread_mutex_destroy(&pool->completed_mutex);
   pthread_mutex_destroy(&pool->should_exit_mutex);
+  pthread_mutex_destroy(&pool->handle_counter_mutex);
 
   free(pool);
 }

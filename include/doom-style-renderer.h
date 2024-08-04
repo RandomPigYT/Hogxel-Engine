@@ -4,6 +4,7 @@
 
 #include "util/dynamic_array.h"
 #include "common/camera.h"
+#include "util/thread_pool.h"
 
 #include <cglm/include/cglm/cglm.h>
 #include <stdint.h>
@@ -35,6 +36,7 @@
   }))
 
 #define DSR_FLT_EPSILON 1e-6f
+#define DSR_DEFAULT_THREAD_COUNT 11
 
 struct dsr_PixelFormat {
   uint8_t bits_per_pixel;
@@ -99,5 +101,12 @@ int64_t dsr_find_sector(const struct dsr_Scene *scene,
 // The direction vector of the camera must be normalized.
 void dsr_render(struct dsr_Surface *surface, const struct dsr_Scene *scene,
                 const struct hog_Camera *camera, int64_t current_sector);
+
+// if num_cpus <= 0, DSR_DEFAULT_THREAD_COUNT threads will be created
+void dsr_render_multithreaded(struct tp_ThreadPool *pool,
+                              struct dsr_Surface *surface,
+                              const struct dsr_Scene *scene,
+                              const struct hog_Camera *camera,
+                              int64_t current_sector);
 
 #endif // DOOM_STYLE_RENDERER_H

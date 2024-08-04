@@ -1,6 +1,7 @@
 #include "doom-style-renderer.h"
 #include "util/dynamic_array.h"
 #include "common/camera.h"
+#include "util/thread_pool.h"
 
 #include <SDL/include/SDL3/SDL.h>
 
@@ -134,6 +135,8 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
+  struct tp_ThreadPool *pool = tp_create_pool(SDL_GetCPUCount() - 1);
+
   SDL_Event e;
   while (true) {
     prev_count = current_count;
@@ -141,6 +144,8 @@ int main(int argc, char **argv) {
 
     deltatime = (double)(current_count - prev_count) /
                 (double)SDL_GetPerformanceFrequency();
+
+    //printf("FPS: %lf\n", 1.0f / deltatime);
 
     if (SDL_PollEvent(&e)) {
       if (e.type == SDL_EVENT_QUIT) {
@@ -289,11 +294,14 @@ int main(int argc, char **argv) {
 
     //glm_vec3_print(cam.position, stdout);
     if (scene.sectors.count > 0) {
-      dsr_render(&dsr_surface, &scene, &cam, 0);
+      //dsr_render(&dsr_surface, &scene, &cam, 0);
+      dsr_render_multithreaded(pool, &dsr_surface, &scene, &cam, 0);
     }
 
     SDL_UpdateWindowSurface(window);
   }
+
+  tp_free_pool(pool);
 
   SDL_DestroySurface(surface);
   SDL_DestroyWindow(window);
