@@ -12,24 +12,11 @@
 struct Portal {
   uint32_t sector_index;
   uint32_t through;
-  int32_t screen_space[4][2];
+  int32_t draw_area[4][2];
 };
 
 struct PortalQueue {
   DA_TYPE(struct Portal) portals;
-};
-
-struct WallSection {
-  struct dsr_Surface *surface;
-  const struct hog_Camera *camera;
-
-  int32_t screen_space[4][2];
-  int32_t x1, x2, z1, z2; // Range of the entire wall
-
-  int32_t x_range[2]; // Range of wall section
-  int32_t sign;
-
-  uint8_t colour[4];
 };
 
 static inline void get_world_coords(const vec2 map_coords, vec4 world_coords) {
@@ -307,38 +294,58 @@ static inline void to_screen_space(const struct dsr_Surface *surface,
            (surface->height - 1));
 }
 
-static void *draw_wall_section(struct WallSection *params) {
-  int32_t l = params->x2 - params->x1;
-  for (int32_t x = params->x_range[0]; x <= params->x_range[1]; x++) {
-    float t = (float)(x - params->x1) / (float)l;
+struct WallSection {
+  struct dsr_Surface *surface;
+  const struct dsr_Scene *scene;
+  const struct hog_Camera *camera;
+
+  int32_t draw_area[4][2];
+
+  int32_t screen_space[4][2];
+  int32_t x1, x2, z1, z2; // Range of the entire wall
+
+  int32_t x_range[2]; // Range of wall section
+  int32_t sign;
+
+  const struct dsr_Scene *cam_sector;
+  const struct dsr_Scene *drawing_sector;
+  const struct dsr_Wall *wall;
+
+  uint8_t colour[4];
+};
+
+static void *draw_wall_section(struct WallSection *args) {
+  int32_t l = args->x2 - args->x1;
+  for (int32_t x = args->x_range[0]; x <= args->x_range[1]; x++) {
+    float t = (float)(x - args->x1) / (float)l;
 
     float depth_lerp =
-      glm_lerp(params->z1, params->z2, t) / params->camera->far_clipping_plane;
+      glm_lerp(args->z1, args->z2, t) / args->camera->far_clipping_plane;
 
-    if (params->sign < 0) {
+    if (args->sign < 0) {
       t = 1.0f - t;
     }
 
-    int32_t y1 = lround(
-      glm_lerp(params->screen_space[0][1], params->screen_space[3][1], t));
-    int32_t y2 = lround(
-      glm_lerp(params->screen_space[1][1], params->screen_space[2][1], t));
+    int32_t y1 =
+      lround(glm_lerp(args->screen_space[0][1], args->screen_space[3][1], t));
+    int32_t y2 =
+      lround(glm_lerp(args->screen_space[1][1], args->screen_space[2][1], t));
 
     uint8_t c[4] = {
-      glm_lerp(params->colour[0] / 255.0f, 0.0f, depth_lerp) * 255.0f,
-      glm_lerp(params->colour[1] / 255.0f, 0.0f, depth_lerp) * 255.0f,
-      glm_lerp(params->colour[2] / 255.0f, 0.0f, depth_lerp) * 255.0f,
+      glm_lerp(args->colour[0] / 255.0f, 0.0f, depth_lerp) * 255.0f,
+      glm_lerp(args->colour[1] / 255.0f, 0.0f, depth_lerp) * 255.0f,
+      glm_lerp(args->colour[2] / 255.0f, 0.0f, depth_lerp) * 255.0f,
       255,
     };
 
-    draw_vertical_line(params->surface, x, y1, y2, c);
-    draw_vertical_line(params->surface, x, 0, y1,
+    draw_vertical_line(args->surface, x, y1, y2, c);
+    draw_vertical_line(args->surface, x, 0, y1,
                        (uint8_t[4]){ 35, 35, 35, 255 });
-    draw_vertical_line(params->surface, x, y2, params->surface->height - 1,
+    draw_vertical_line(args->surface, x, y2, args->surface->height - 1,
                        (uint8_t[4]){ 100, 24, 24, 255 });
   }
 
-  free(params);
+  free(args);
   return NULL;
 }
 
@@ -358,6 +365,7 @@ struct RenderWallArgs {
   uint8_t wall_colour[4];
 
   struct PortalQueue portal_queue;
+  int32_t draw_area[4][2];
 };
 
 static void render_wall(struct RenderWallArgs *args) {
@@ -436,21 +444,6 @@ static void render_wall(struct RenderWallArgs *args) {
                     screen_space[i]);
   }
 
-  if (wall->is_portal) {
-    struct Portal p = { 0 };
-
-    assert(wall->shared_count <= 2);
-
-    p.sector_index = wall->shared_with[0] != args->drawing_sector_index
-                       ? wall->shared_with[0]
-                       : wall->shared_with[1];
-
-    p.through = args->wall_index;
-    memcpy(p.screen_space, screen_space, sizeof(screen_space));
-
-    DA_APPEND(&args->portal_queue.portals, p);
-  }
-
   //printf("\n");
   //printf("======================================================\n");
   //printf("\n");
@@ -461,16 +454,60 @@ static void render_wall(struct RenderWallArgs *args) {
   //                     screen_space[3][1], (uint8_t[]){ 255, 0, 0, 255 });
 
   int32_t x1, x2, z1, z2;
+  int32_t y_coords[4];
+
   if (screen_space[2][0] >= screen_space[0][0]) {
     x1 = screen_space[0][0];
     z1 = clipped_coords[0][2];
     x2 = screen_space[2][0];
     z2 = clipped_coords[1][2];
+
+    y_coords[0] = screen_space[0][1];
+    y_coords[1] = screen_space[1][1];
+    y_coords[2] = screen_space[3][1];
+    y_coords[3] = screen_space[2][1];
+
   } else {
     x1 = screen_space[2][0];
     z1 = clipped_coords[1][2];
     x2 = screen_space[0][0];
     z2 = clipped_coords[0][2];
+
+    y_coords[0] = screen_space[3][1];
+    y_coords[1] = screen_space[2][1];
+    y_coords[2] = screen_space[0][1];
+    y_coords[3] = screen_space[1][1];
+  }
+
+  if (wall->is_portal) {
+    struct Portal p = { 0 };
+
+    assert(wall->shared_count <= 2);
+
+    p.sector_index = wall->shared_with[0] != args->drawing_sector_index
+                       ? wall->shared_with[0]
+                       : wall->shared_with[1];
+
+    p.through = args->wall_index;
+
+    for (uint8_t i = 0; i < 4; i++) {
+      if (i < 2) {
+        p.draw_area[i][0] =
+          int_clamp(x1, args->draw_area[0][0], args->draw_area[3][0]);
+
+        p.draw_area[i][1] =
+          int_clamp(y_coords[i], args->draw_area[1][1], args->draw_area[0][1]);
+
+      } else {
+        p.draw_area[i][0] =
+          int_clamp(x2, args->draw_area[0][0], args->draw_area[3][0]);
+
+        p.draw_area[i][1] =
+          int_clamp(y_coords[i], args->draw_area[2][1], args->draw_area[3][1]);
+      }
+    }
+
+    DA_APPEND(&args->portal_queue.portals, p);
   }
 
   int32_t l = x2 - x1;
@@ -495,7 +532,8 @@ static void render_wall(struct RenderWallArgs *args) {
     };
 
     memcpy(tmp->screen_space, screen_space, sizeof(screen_space));
-    memcpy(tmp->colour, args->wall_colour, 4 * sizeof(*args->wall_colour));
+    memcpy(tmp->colour, args->wall_colour, sizeof(args->wall_colour));
+    memcpy(tmp->draw_area, args->draw_area, sizeof(args->draw_area));
 
     draw_wall_section(tmp);
 
@@ -521,7 +559,8 @@ static void render_wall(struct RenderWallArgs *args) {
       };
 
       memcpy(tmp->screen_space, screen_space, sizeof(screen_space));
-      memcpy(tmp->colour, args->wall_colour, 4 * sizeof(*args->wall_colour));
+      memcpy(tmp->colour, args->wall_colour, sizeof(args->wall_colour));
+      memcpy(tmp->draw_area, args->draw_area, sizeof(args->draw_area));
 
       tmp->x_range[0] = glm_imin(x1 + i * section_size, x2);
       tmp->x_range[1] = glm_imax(tmp->x_range[0] + section_size - 1, x2);
