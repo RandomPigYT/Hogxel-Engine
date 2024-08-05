@@ -19,6 +19,19 @@ struct PortalQueue {
   DA_TYPE(struct Portal) portals;
 };
 
+struct WallSection {
+  struct dsr_Surface *surface;
+  const struct hog_Camera *camera;
+
+  int32_t screen_space[4][2];
+  int32_t x1, x2, z1, z2; // Range of the entire wall
+
+  int32_t x_range[2]; // Range of wall section
+  int32_t sign;
+
+  uint8_t colour[4];
+};
+
 static inline void get_world_coords(const vec2 map_coords, vec4 world_coords) {
   world_coords[0] = map_coords[0];
   world_coords[1] = 0.0f;
@@ -294,23 +307,7 @@ static inline void to_screen_space(const struct dsr_Surface *surface,
            (surface->height - 1));
 }
 
-struct DrawWallSection {
-  struct dsr_Surface *surface;
-
-  int32_t screen_space[4][2];
-  int32_t x1, x2, z1, z2; // Range of the entire wall
-
-  int32_t x_range[2]; // Range of wall section
-  int32_t sign;
-  const struct hog_Camera *camera;
-
-  uint8_t colour[4];
-};
-
-static void *draw_wall_section(void *input) {
-  struct DrawWallSection *params = input;
-  input = NULL;
-
+static void *draw_wall_section(struct WallSection *params) {
   int32_t l = params->x2 - params->x1;
   for (int32_t x = params->x_range[0]; x <= params->x_range[1]; x++) {
     float t = (float)(x - params->x1) / (float)l;
@@ -462,37 +459,29 @@ dsr_render_wall(struct tp_ThreadPool *pool, struct dsr_Surface *surface,
 
   int32_t l = x2 - x1;
 
-  int32_t y1 = 0, y2 = 0;
-  float t = 0.0f;
-
   int32_t sign = glm_sign(screen_space[2][0] - screen_space[0][0]);
 
   if (pool == NULL) {
-    for (int32_t x = x1; x <= x2; x++) {
-      t = (float)(x - x1) / (float)l;
+    struct WallSection *tmp = malloc(sizeof(*tmp));
 
-      float depth_lerp = glm_lerp(z1, z2, t) / camera->far_clipping_plane;
+    *tmp = (struct WallSection){
+      .surface = surface,
+      .camera = camera,
 
-      if (sign < 0) {
-        t = 1.0f - t;
-      }
+      .x1 = x1,
+      .z1 = z1,
+      .x2 = x2,
+      .z2 = z2,
 
-      y1 = lround(glm_lerp(screen_space[0][1], screen_space[3][1], t));
-      y2 = lround(glm_lerp(screen_space[1][1], screen_space[2][1], t));
+      .x_range = { x1, x2 },
 
-      uint8_t c[4] = {
-        glm_lerp(wall_colour[0] / 255.0f, 0.0f, depth_lerp) * 255.0f,
-        glm_lerp(wall_colour[1] / 255.0f, 0.0f, depth_lerp) * 255.0f,
-        glm_lerp(wall_colour[2] / 255.0f, 0.0f, depth_lerp) * 255.0f,
-        255,
-      };
+      .sign = sign,
+    };
 
-      //draw_vertical_line(surface, x, y1, y2, wall_colour);
-      draw_vertical_line(surface, x, y1, y2, c);
-      draw_vertical_line(surface, x, 0, y1, (uint8_t[4]){ 35, 35, 35, 255 });
-      draw_vertical_line(surface, x, y2, surface->height - 1,
-                         (uint8_t[4]){ 100, 24, 24, 255 });
-    }
+    memcpy(tmp->screen_space, screen_space, sizeof(screen_space));
+    memcpy(tmp->colour, wall_colour, 4 * sizeof(*wall_colour));
+
+    draw_wall_section(tmp);
 
   } else {
     uint32_t section_size = l / pool->count;
@@ -500,29 +489,29 @@ dsr_render_wall(struct tp_ThreadPool *pool, struct dsr_Surface *surface,
     DA_TYPE(tp_JobHandle) handles = { 0 };
 
     for (uint32_t i = 0; i < pool->count; i++) {
-      struct DrawWallSection *tmp = malloc(sizeof(*tmp));
+      struct WallSection *tmp = malloc(sizeof(*tmp));
 
-      tmp->surface = surface;
+      *tmp = (struct WallSection){
+        .surface = surface,
+        .camera = camera,
+
+        .x1 = x1,
+        .z1 = z1,
+        .x2 = x2,
+        .z2 = z2,
+
+        .sign = sign,
+      };
+
+      memcpy(tmp->colour, wall_colour, 4 * sizeof(*wall_colour));
       memcpy(tmp->screen_space, screen_space, sizeof(screen_space));
-
-      tmp->x1 = x1;
-      tmp->z1 = z1;
-      tmp->x2 = x2;
-      tmp->z2 = z2;
 
       tmp->x_range[0] = glm_imin(x1 + i * section_size, x2);
       tmp->x_range[1] = glm_imax(tmp->x_range[0] + section_size - 1, x2);
 
-      tmp->sign = sign;
-
-      tmp->camera = camera;
-
-      memcpy(tmp->colour, wall_colour, 4 * sizeof(*wall_colour));
-      //for (uint8_t j = 0; j < 4; j++) {
-      //  tmp->colour[j] = wall_colour[j];
-      //}
-
-      DA_APPEND(&handles, tp_add_job(pool, draw_wall_section, tmp));
+      tp_JobHandle handle =
+        tp_add_job(pool, (tp_JobCallback)draw_wall_section, tmp);
+      DA_APPEND(&handles, handle);
     }
 
     for (uint32_t i = 0; i < handles.count; i++) {

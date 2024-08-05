@@ -36,7 +36,6 @@
   }))
 
 #define DSR_FLT_EPSILON 1e-6f
-#define DSR_DEFAULT_THREAD_COUNT 11
 
 struct dsr_PixelFormat {
   uint8_t bits_per_pixel;
