@@ -342,52 +342,66 @@ static void *draw_wall_section(struct WallSection *params) {
   return NULL;
 }
 
-static void
-dsr_render_wall(struct tp_ThreadPool *pool, struct dsr_Surface *surface,
-                const struct dsr_Scene *scene, uint32_t cam_sector_index,
-                uint32_t drawing_sector_index, uint32_t wall_index,
-                const struct hog_Camera *camera, const vec2 proj_plane_size,
-                uint8_t wall_colour[4], struct PortalQueue *portal_queue) {
-  (void)cam_sector_index;
+struct RenderWallArgs {
+  struct dsr_Surface *surface;
+  const struct dsr_Scene *scene;
 
-  struct dsr_Wall *wall = &DA_AT(scene->walls, wall_index);
+  const struct hog_Camera *camera;
+  const vec2 proj_plane_size;
+
+  struct tp_ThreadPool *pool;
+
+  uint32_t cam_sector_index;
+  uint32_t drawing_sector_index;
+
+  uint32_t wall_index;
+  uint8_t wall_colour[4];
+
+  struct PortalQueue portal_queue;
+};
+
+static void render_wall(struct RenderWallArgs *args) {
+  (void)args->cam_sector_index;
+
+  struct dsr_Wall *wall = &DA_AT(args->scene->walls, args->wall_index);
 
   vec4 wall_world_coords[2] = { 0 };
-  get_world_coords(DA_AT(scene->vertices, wall->vertices[0]),
+  get_world_coords(DA_AT(args->scene->vertices, wall->vertices[0]),
                    wall_world_coords[0]);
-  get_world_coords(DA_AT(scene->vertices, wall->vertices[1]),
+  get_world_coords(DA_AT(args->scene->vertices, wall->vertices[1]),
                    wall_world_coords[1]);
 
   vec4 relative_coords[2] = { 0 };
-  get_relative_coords(camera, wall_world_coords[0], relative_coords[0]);
-  get_relative_coords(camera, wall_world_coords[1], relative_coords[1]);
+  get_relative_coords(args->camera, wall_world_coords[0], relative_coords[0]);
+  get_relative_coords(args->camera, wall_world_coords[1], relative_coords[1]);
 
-  if (relative_coords[0][2] < camera->near_clipping_plane &&
-      relative_coords[1][2] < camera->near_clipping_plane) {
+  if (relative_coords[0][2] < args->camera->near_clipping_plane &&
+      relative_coords[1][2] < args->camera->near_clipping_plane) {
     return;
 
-  } else if (relative_coords[0][2] > camera->far_clipping_plane &&
-             relative_coords[1][2] > camera->far_clipping_plane) {
+  } else if (relative_coords[0][2] > args->camera->far_clipping_plane &&
+             relative_coords[1][2] > args->camera->far_clipping_plane) {
     return;
   }
 
   vec4 clipped_coords[2] = { 0 };
-  if (!clipped_wall_positions(relative_coords, camera, clipped_coords)) {
+  if (!clipped_wall_positions(relative_coords, args->camera, clipped_coords)) {
     return;
   }
 
   // Counter-clockwise
   vec2 projected[4] = { 0 };
   vec2 projected_x = {
-    x_projection(camera, clipped_coords[0]),
-    x_projection(camera, clipped_coords[1]),
+    x_projection(args->camera, clipped_coords[0]),
+    x_projection(args->camera, clipped_coords[1]),
   };
 
   {
-    struct dsr_Sector *s = &DA_AT(scene->sectors, drawing_sector_index);
+    struct dsr_Sector *s =
+      &DA_AT(args->scene->sectors, args->drawing_sector_index);
     vec2 temp = { 0 };
-    y_projection(camera, clipped_coords[0], s->floor_height, s->ceil_height,
-                 temp);
+    y_projection(args->camera, clipped_coords[0], s->floor_height,
+                 s->ceil_height, temp);
 
     projected[0][0] = projected_x[0];
     projected[0][1] = temp[0];
@@ -397,10 +411,11 @@ dsr_render_wall(struct tp_ThreadPool *pool, struct dsr_Surface *surface,
   }
 
   {
-    struct dsr_Sector *s = &DA_AT(scene->sectors, drawing_sector_index);
+    struct dsr_Sector *s =
+      &DA_AT(args->scene->sectors, args->drawing_sector_index);
     vec2 temp = { 0 };
-    y_projection(camera, clipped_coords[1], s->floor_height, s->ceil_height,
-                 temp);
+    y_projection(args->camera, clipped_coords[1], s->floor_height,
+                 s->ceil_height, temp);
 
     projected[2][0] = projected_x[1];
     projected[2][1] = temp[1];
@@ -417,7 +432,8 @@ dsr_render_wall(struct tp_ThreadPool *pool, struct dsr_Surface *surface,
   int32_t screen_space[4][2] = { 0 };
   //printf("Screen space: \n");
   for (uint32_t i = 0; i < 4; i++) {
-    to_screen_space(surface, projected[i], proj_plane_size, screen_space[i]);
+    to_screen_space(args->surface, projected[i], args->proj_plane_size,
+                    screen_space[i]);
   }
 
   if (wall->is_portal) {
@@ -425,14 +441,14 @@ dsr_render_wall(struct tp_ThreadPool *pool, struct dsr_Surface *surface,
 
     assert(wall->shared_count <= 2);
 
-    p.sector_index = wall->shared_with[0] != drawing_sector_index
+    p.sector_index = wall->shared_with[0] != args->drawing_sector_index
                        ? wall->shared_with[0]
                        : wall->shared_with[1];
 
-    p.through = wall_index;
+    p.through = args->wall_index;
     memcpy(p.screen_space, screen_space, sizeof(screen_space));
 
-    DA_APPEND(&portal_queue->portals, p);
+    DA_APPEND(&args->portal_queue.portals, p);
   }
 
   //printf("\n");
@@ -461,12 +477,12 @@ dsr_render_wall(struct tp_ThreadPool *pool, struct dsr_Surface *surface,
 
   int32_t sign = glm_sign(screen_space[2][0] - screen_space[0][0]);
 
-  if (pool == NULL) {
+  if (args->pool == NULL) {
     struct WallSection *tmp = malloc(sizeof(*tmp));
 
     *tmp = (struct WallSection){
-      .surface = surface,
-      .camera = camera,
+      .surface = args->surface,
+      .camera = args->camera,
 
       .x1 = x1,
       .z1 = z1,
@@ -479,21 +495,22 @@ dsr_render_wall(struct tp_ThreadPool *pool, struct dsr_Surface *surface,
     };
 
     memcpy(tmp->screen_space, screen_space, sizeof(screen_space));
-    memcpy(tmp->colour, wall_colour, 4 * sizeof(*wall_colour));
+    memcpy(tmp->colour, args->wall_colour, 4 * sizeof(*args->wall_colour));
 
     draw_wall_section(tmp);
 
   } else {
-    uint32_t section_size = l / pool->count;
+    uint32_t num_batches = args->pool->count;
+    uint32_t section_size = l / num_batches;
 
     DA_TYPE(tp_JobHandle) handles = { 0 };
 
-    for (uint32_t i = 0; i < pool->count; i++) {
+    for (uint32_t i = 0; i < num_batches; i++) {
       struct WallSection *tmp = malloc(sizeof(*tmp));
 
       *tmp = (struct WallSection){
-        .surface = surface,
-        .camera = camera,
+        .surface = args->surface,
+        .camera = args->camera,
 
         .x1 = x1,
         .z1 = z1,
@@ -503,19 +520,19 @@ dsr_render_wall(struct tp_ThreadPool *pool, struct dsr_Surface *surface,
         .sign = sign,
       };
 
-      memcpy(tmp->colour, wall_colour, 4 * sizeof(*wall_colour));
       memcpy(tmp->screen_space, screen_space, sizeof(screen_space));
+      memcpy(tmp->colour, args->wall_colour, 4 * sizeof(*args->wall_colour));
 
       tmp->x_range[0] = glm_imin(x1 + i * section_size, x2);
       tmp->x_range[1] = glm_imax(tmp->x_range[0] + section_size - 1, x2);
 
       tp_JobHandle handle =
-        tp_add_job(pool, (tp_JobCallback)draw_wall_section, tmp);
+        tp_add_job(args->pool, (tp_JobCallback)draw_wall_section, tmp);
       DA_APPEND(&handles, handle);
     }
 
     for (uint32_t i = 0; i < handles.count; i++) {
-      tp_wait_job(pool, DA_AT(handles, i));
+      tp_wait_job(args->pool, DA_AT(handles, i));
     }
 
     DA_FREE(&handles);
@@ -542,7 +559,17 @@ void dsr_render_walls(struct tp_ThreadPool *pool, struct dsr_Surface *surface,
     DA_AT(palette, palette.count - 1)[3] = 255;
   }
 
-  struct PortalQueue portal_queue = { 0 };
+  struct RenderWallArgs render_wall_args = {
+    .surface = surface,
+    .scene = scene,
+
+    .camera = camera,
+    .proj_plane_size = { proj_plane_size[0], proj_plane_size[1] },
+
+    .pool = pool,
+
+    .cam_sector_index = current_sector,
+  };
 
   for (uint32_t i = 0; i < scene->sectors.count; i++) {
     struct dsr_Sector *sector = &DA_AT(scene->sectors, i);
@@ -565,11 +592,18 @@ void dsr_render_walls(struct tp_ThreadPool *pool, struct dsr_Surface *surface,
         255,
       };
 
-      dsr_render_wall(pool, surface, scene, current_sector, i, wall_index,
-                      &temp_cam, proj_plane_size, colour, &portal_queue);
+      render_wall_args.drawing_sector_index = i;
+      render_wall_args.wall_index = wall_index;
+      render_wall_args.camera = &temp_cam;
+      memcpy(render_wall_args.wall_colour, colour, sizeof(colour));
+
+      // dsr_render_wall(pool, surface, scene, current_sector, i, wall_index,
+      // &temp_cam, proj_plane_size, colour, &portal_queue);
+
+      render_wall(&render_wall_args);
     }
   }
 
   DA_FREE(&palette);
-  DA_FREE(&portal_queue.portals);
+  DA_FREE(&render_wall_args.portal_queue.portals);
 }

@@ -96,7 +96,6 @@ void *tp_worker(void *p) {
       pthread_mutex_unlock(&pool->completed_mutex);
     }
 
-    //usleep(100);
   } while (1);
 
   return NULL;
