@@ -21,9 +21,9 @@ static void render_impl(struct dsr_Surface *surface,
     tan(camera->fov * 0.5f) * camera->near_clipping_plane * 2;
   proj_plane_size[1] = proj_plane_size[0] / camera->aspect_ratio;
 
-  //memset(surface->pixels, 0,
-  //       surface->width * surface->height *
-  //         surface->pixel_format.bytes_per_pixel);
+  memset(surface->pixels, 0,
+         surface->width * surface->height *
+           surface->pixel_format.bytes_per_pixel);
 
   dsr_render_walls(pool, surface, scene, camera, current_sector,
                    proj_plane_size);
