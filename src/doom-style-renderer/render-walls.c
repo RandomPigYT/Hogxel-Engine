@@ -11,7 +11,7 @@
 
 struct Portal {
   uint32_t sector_index;
-  uint32_t through;
+  int64_t from_sector_index;
   int32_t draw_area[4][2];
 };
 
@@ -307,8 +307,8 @@ struct WallSection {
   int32_t x_range[2]; // Range of wall section
   int32_t sign;
 
-  const struct dsr_Scene *cam_sector;
-  const struct dsr_Scene *drawing_sector;
+  const struct dsr_Sector *cam_sector;
+  const struct dsr_Sector *drawing_sector;
   const struct dsr_Wall *wall;
 
   uint8_t colour[4];
@@ -316,7 +316,19 @@ struct WallSection {
 
 static void *draw_wall_section(struct WallSection *args) {
   int32_t l = args->x2 - args->x1;
+
+  int32_t draw_area_width = args->draw_area[3][0] - args->draw_area[0][0];
+
+  if (draw_area_width == 0) {
+    free(args);
+    return NULL;
+  }
+
   for (int32_t x = args->x_range[0]; x <= args->x_range[1]; x++) {
+    if (x < args->draw_area[0][0] || x > args->draw_area[3][0]) {
+      continue;
+    }
+
     float t = (float)(x - args->x1) / (float)l;
 
     float depth_lerp =
@@ -326,10 +338,23 @@ static void *draw_wall_section(struct WallSection *args) {
       t = 1.0f - t;
     }
 
-    int32_t y1 =
-      lround(glm_lerp(args->screen_space[0][1], args->screen_space[3][1], t));
-    int32_t y2 =
-      lround(glm_lerp(args->screen_space[1][1], args->screen_space[2][1], t));
+    float draw_area_t = (x - args->draw_area[0][0]) / draw_area_width;
+
+    int32_t draw_area_height[2] = {
+      lround(
+        glm_lerp(args->draw_area[0][1], args->draw_area[3][1], draw_area_t)),
+
+      lround(
+        glm_lerp(args->draw_area[1][1], args->draw_area[2][1], draw_area_t)),
+    };
+
+    int32_t y1 = int_clamp(
+      lround(glm_lerp(args->screen_space[0][1], args->screen_space[3][1], t)),
+      draw_area_height[0], draw_area_height[1]);
+
+    int32_t y2 = int_clamp(
+      lround(glm_lerp(args->screen_space[1][1], args->screen_space[2][1], t)),
+      draw_area_height[0], draw_area_height[1]);
 
     uint8_t c[4] = {
       glm_lerp(args->colour[0] / 255.0f, 0.0f, depth_lerp) * 255.0f,
@@ -338,11 +363,24 @@ static void *draw_wall_section(struct WallSection *args) {
       255,
     };
 
-    draw_vertical_line(args->surface, x, y1, y2, c);
-    draw_vertical_line(args->surface, x, 0, y1,
-                       (uint8_t[4]){ 35, 35, 35, 255 });
-    draw_vertical_line(args->surface, x, y2, args->surface->height - 1,
-                       (uint8_t[4]){ 100, 24, 24, 255 });
+    if (!args->wall->is_portal) {
+      draw_vertical_line(args->surface, x, y1, y2, c);
+      draw_vertical_line(args->surface, x, draw_area_height[0], y1,
+                         (uint8_t[4]){ 35, 35, 35, 255 });
+      draw_vertical_line(args->surface, x, y2, draw_area_height[1],
+                         (uint8_t[4]){ 100, 24, 24, 255 });
+
+    } else {
+      if (args->drawing_sector->ceil_height < args->cam_sector->ceil_height) {
+        draw_vertical_line(args->surface, x, y1, draw_area_height[0], c);
+      }
+
+      if (args->drawing_sector->floor_height > args->cam_sector->floor_height) {
+        draw_vertical_line(args->surface, x, y2, draw_area_height[1], c);
+      }
+      //draw_vertical_line(args->surface, x, y1, y2,
+      //                   (uint8_t[4]){ 255, 0, 255, 255 });
+    }
   }
 
   free(args);
@@ -369,8 +407,6 @@ struct RenderWallArgs {
 };
 
 static void render_wall(struct RenderWallArgs *args) {
-  (void)args->cam_sector_index;
-
   struct dsr_Wall *wall = &DA_AT(args->scene->walls, args->wall_index);
 
   vec4 wall_world_coords[2] = { 0 };
@@ -488,26 +524,64 @@ static void render_wall(struct RenderWallArgs *args) {
                        ? wall->shared_with[0]
                        : wall->shared_with[1];
 
-    p.through = args->wall_index;
-
-    for (uint8_t i = 0; i < 4; i++) {
-      if (i < 2) {
-        p.draw_area[i][0] =
-          int_clamp(x1, args->draw_area[0][0], args->draw_area[3][0]);
-
-        p.draw_area[i][1] =
-          int_clamp(y_coords[i], args->draw_area[1][1], args->draw_area[0][1]);
-
-      } else {
-        p.draw_area[i][0] =
-          int_clamp(x2, args->draw_area[0][0], args->draw_area[3][0]);
-
-        p.draw_area[i][1] =
-          int_clamp(y_coords[i], args->draw_area[2][1], args->draw_area[3][1]);
+    bool should_append = true;
+    for (uint64_t i = 0; i < args->portal_queue.portals.count; i++) {
+      if (DA_AT(args->portal_queue.portals, i).from_sector_index ==
+          p.sector_index) {
+        should_append = false;
+        break;
       }
     }
 
-    DA_APPEND(&args->portal_queue.portals, p);
+    if (should_append) {
+      p.from_sector_index = args->drawing_sector_index;
+
+      int32_t draw_area_width = args->draw_area[3][0] - args->draw_area[0][0];
+
+      // The y axis of the world space coordinates are flipped when converting to scree space,
+      // hence, the higher point in world space has a smaller screen space y coordinate.
+      for (uint8_t i = 0; i < 4; i++) {
+        if (i < 2) {
+          float draw_area_t = (x1 - args->draw_area[0][0]) / draw_area_width;
+
+          p.draw_area[i][0] =
+            int_clamp(x1, args->draw_area[0][0], args->draw_area[3][0]);
+
+          int32_t draw_area_height[2] = {
+            lround(glm_lerp(args->draw_area[0][1], args->draw_area[3][1],
+                            draw_area_t)),
+
+            lround(glm_lerp(args->draw_area[1][1], args->draw_area[2][1],
+                            draw_area_t)),
+          };
+
+          p.draw_area[i][1] =
+            int_clamp(y_coords[i], draw_area_height[0], draw_area_height[1]);
+
+        } else {
+          float draw_area_t = (x2 - args->draw_area[0][0]) / draw_area_width;
+
+          p.draw_area[i][0] =
+            int_clamp(x1, args->draw_area[0][0], args->draw_area[3][0]);
+
+          p.draw_area[i][0] =
+            int_clamp(x2, args->draw_area[0][0], args->draw_area[3][0]);
+
+          int32_t draw_area_height[2] = {
+            lround(glm_lerp(args->draw_area[0][1], args->draw_area[3][1],
+                            draw_area_t)),
+
+            lround(glm_lerp(args->draw_area[1][1], args->draw_area[2][1],
+                            draw_area_t)),
+          };
+
+          p.draw_area[i][1] =
+            int_clamp(y_coords[i], draw_area_height[0], draw_area_height[1]);
+        }
+      }
+
+      DA_APPEND(&args->portal_queue.portals, p);
+    }
   }
 
   int32_t l = x2 - x1;
@@ -519,6 +593,7 @@ static void render_wall(struct RenderWallArgs *args) {
 
     *tmp = (struct WallSection){
       .surface = args->surface,
+      .scene = args->scene,
       .camera = args->camera,
 
       .x1 = x1,
@@ -527,8 +602,13 @@ static void render_wall(struct RenderWallArgs *args) {
       .z2 = z2,
 
       .x_range = { x1, x2 },
-
       .sign = sign,
+
+      .cam_sector = &DA_AT(args->scene->sectors, args->cam_sector_index),
+      .drawing_sector =
+        &DA_AT(args->scene->sectors, args->drawing_sector_index),
+
+      .wall = wall,
     };
 
     memcpy(tmp->screen_space, screen_space, sizeof(screen_space));
@@ -548,6 +628,7 @@ static void render_wall(struct RenderWallArgs *args) {
 
       *tmp = (struct WallSection){
         .surface = args->surface,
+        .scene = args->scene,
         .camera = args->camera,
 
         .x1 = x1,
@@ -556,6 +637,12 @@ static void render_wall(struct RenderWallArgs *args) {
         .z2 = z2,
 
         .sign = sign,
+
+        .cam_sector = &DA_AT(args->scene->sectors, args->cam_sector_index),
+        .drawing_sector =
+          &DA_AT(args->scene->sectors, args->drawing_sector_index),
+
+        .wall = wall,
       };
 
       memcpy(tmp->screen_space, screen_space, sizeof(screen_space));
@@ -582,6 +669,10 @@ void dsr_render_walls(struct tp_ThreadPool *pool, struct dsr_Surface *surface,
                       const struct dsr_Scene *scene,
                       const struct hog_Camera *camera, int64_t current_sector,
                       vec2 proj_plane_size) {
+  if (scene->sectors.count == 0) {
+    return;
+  }
+
   srand((int)6942080085);
   for (int32_t i = 0; i < rand() % 100; i++) {
     rand();
@@ -608,8 +699,75 @@ void dsr_render_walls(struct tp_ThreadPool *pool, struct dsr_Surface *surface,
     .pool = pool,
 
     .cam_sector_index = current_sector,
+
   };
 
+  DA_APPEND(&render_wall_args.portal_queue.portals, ({
+    struct Portal portal = { 
+			.sector_index = current_sector, 
+			.from_sector_index = current_sector,
+
+			.draw_area = {
+				{0, 0}, 
+				{0, surface->height - 1}, 
+				{surface->width - 1, surface->height - 1}, 
+				{surface->width - 1, 0},
+			},
+    };
+
+    portal;
+  }));
+
+#if 1
+  while (render_wall_args.portal_queue.portals.count) {
+    struct Portal *p = &DA_AT(render_wall_args.portal_queue.portals, 0);
+    //printf("Sector: %d\n", p->sector_index);
+    //printf("draw_area {\n"
+    //       "  { %d, %d },\n"
+    //       "  { %d, %d },\n"
+    //       "  { %d, %d },\n"
+    //       "  { %d, %d },\n"
+    //       "}\n\n",
+    //       p->draw_area[0][0], p->draw_area[0][1], p->draw_area[1][0],
+    //       p->draw_area[1][1], p->draw_area[2][0], p->draw_area[2][1],
+    //       p->draw_area[3][0], p->draw_area[3][1]);
+
+    struct dsr_Sector *sector = &DA_AT(scene->sectors, p->sector_index);
+
+    memcpy(render_wall_args.draw_area, p->draw_area, sizeof(p->draw_area));
+    render_wall_args.drawing_sector_index = p->sector_index;
+
+    struct hog_Camera temp_cam = *camera;
+
+    glm_vec3_add(
+      temp_cam.position,
+      (vec3){ 0.0f,
+              DA_AT(scene->sectors, (uint32_t)current_sector).floor_height,
+              0.0f },
+      temp_cam.position);
+
+    render_wall_args.camera = &temp_cam;
+
+    for (uint32_t j = 0; j < sector->walls.count; j++) {
+      uint32_t wall_index = DA_AT(sector->walls, j);
+
+      uint8_t colour[4] = {
+        DA_AT(palette, wall_index)[0],
+        DA_AT(palette, wall_index)[1],
+        DA_AT(palette, wall_index)[2],
+        255,
+      };
+
+      render_wall_args.wall_index = wall_index;
+      memcpy(render_wall_args.wall_colour, colour, sizeof(colour));
+
+      render_wall(&render_wall_args);
+    }
+
+    DA_POP(&render_wall_args.portal_queue.portals, 0);
+  }
+
+#else
   for (uint32_t i = 0; i < scene->sectors.count; i++) {
     struct dsr_Sector *sector = &DA_AT(scene->sectors, i);
     for (uint32_t j = 0; j < sector->walls.count; j++) {
@@ -642,6 +800,7 @@ void dsr_render_walls(struct tp_ThreadPool *pool, struct dsr_Surface *surface,
       render_wall(&render_wall_args);
     }
   }
+#endif
 
   DA_FREE(&palette);
   DA_FREE(&render_wall_args.portal_queue.portals);
