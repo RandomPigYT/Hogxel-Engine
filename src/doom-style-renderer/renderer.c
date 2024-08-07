@@ -1,5 +1,12 @@
+#ifndef UTIL_THREAD_POOL_IMPLEMENTATION
 #define UTIL_THREAD_POOL_IMPLEMENTATION
+#endif
 #include "util/thread_pool.h"
+
+#ifndef UTIL_ARENA_H_IMPLEMENTATION
+#define UTIL_ARENA_H_IMPLEMENTATION
+#endif
+#include "util/arena.h"
 
 #include "doom-style-renderer.h"
 #include "render-walls.h"
@@ -8,7 +15,7 @@
 #include <string.h>
 #include <assert.h>
 
-static void render_impl(struct dsr_Surface *surface,
+static void render_impl(struct Arena *arena, struct dsr_Surface *surface,
                         const struct dsr_Scene *scene,
                         const struct hog_Camera *camera, int64_t current_sector,
                         struct tp_ThreadPool *pool) {
@@ -25,19 +32,20 @@ static void render_impl(struct dsr_Surface *surface,
          surface->width * surface->height *
            surface->pixel_format.bytes_per_pixel);
 
-  dsr_render_walls(pool, surface, scene, camera, current_sector,
+  dsr_render_walls(arena, pool, surface, scene, camera, current_sector,
                    proj_plane_size);
 }
 
-void dsr_render(struct dsr_Surface *surface, const struct dsr_Scene *scene,
-                const struct hog_Camera *camera, int64_t current_sector) {
-  render_impl(surface, scene, camera, current_sector, NULL);
+void dsr_render(struct Arena *arena, struct dsr_Surface *surface,
+                const struct dsr_Scene *scene, const struct hog_Camera *camera,
+                int64_t current_sector) {
+  render_impl(arena, surface, scene, camera, current_sector, NULL);
 }
 
-void dsr_render_multithreaded(struct tp_ThreadPool *pool,
+void dsr_render_multithreaded(struct Arena *arena, struct tp_ThreadPool *pool,
                               struct dsr_Surface *surface,
                               const struct dsr_Scene *scene,
                               const struct hog_Camera *camera,
                               int64_t current_sector) {
-  render_impl(surface, scene, camera, current_sector, pool);
+  render_impl(arena, surface, scene, camera, current_sector, pool);
 }

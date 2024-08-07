@@ -1,7 +1,9 @@
 #include "doom-style-renderer.h"
 #include "scene-integrity.h"
 
+#ifndef UTIL_FILE_IO_IMPLEMENTATION
 #define UTIL_FILE_IO_IMPLEMENTATION
+#endif
 #include "util/fileIO.h"
 #include "util/dynamic_array.h"
 

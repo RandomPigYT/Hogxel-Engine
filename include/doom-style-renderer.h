@@ -2,9 +2,10 @@
 #ifndef DOOM_STYLE_RENDERER_H
 #define DOOM_STYLE_RENDERER_H
 
-#include "util/dynamic_array.h"
 #include "common/camera.h"
+#include "util/dynamic_array.h"
 #include "util/thread_pool.h"
+#include "util/arena.h"
 
 #include <cglm/include/cglm/cglm.h>
 #include <stdint.h>
@@ -98,11 +99,12 @@ int64_t dsr_find_sector(const struct dsr_Scene *scene,
                         const struct hog_Camera *camera);
 
 // The direction vector of the camera must be normalized.
-void dsr_render(struct dsr_Surface *surface, const struct dsr_Scene *scene,
-                const struct hog_Camera *camera, int64_t current_sector);
+void dsr_render(struct Arena *arena, struct dsr_Surface *surface,
+                const struct dsr_Scene *scene, const struct hog_Camera *camera,
+                int64_t current_sector);
 
 // if num_cpus <= 0, DSR_DEFAULT_THREAD_COUNT threads will be created
-void dsr_render_multithreaded(struct tp_ThreadPool *pool,
+void dsr_render_multithreaded(struct Arena *arena, struct tp_ThreadPool *pool,
                               struct dsr_Surface *surface,
                               const struct dsr_Scene *scene,
                               const struct hog_Camera *camera,

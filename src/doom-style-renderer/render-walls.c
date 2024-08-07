@@ -1,13 +1,16 @@
 #include "render-walls.h"
 #include "doom-style-renderer.h"
+
+#include "util/arena.h"
 #include "util/dynamic_array.h"
 #include "util/thread_pool.h"
 
 #include <cglm/include/cglm/cglm.h>
-
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+
+#define PAGE_SIZE 4096
 
 struct Portal {
   uint32_t sector_index;
@@ -324,7 +327,6 @@ static void *draw_wall_section(struct WallSection *args) {
     args->portal_screen_space[3][0] - args->portal_screen_space[0][0];
 
   if (draw_area_width == 0) {
-    free(args);
     return NULL;
   }
 
@@ -405,7 +407,6 @@ static void *draw_wall_section(struct WallSection *args) {
     }
   }
 
-  free(args);
   return NULL;
 }
 
@@ -428,6 +429,8 @@ struct RenderWallArgs {
 
   int32_t draw_area[4][2];
   int32_t portal_screen_space[4][2];
+
+  struct Arena *arena;
 };
 
 static void render_wall(struct RenderWallArgs *args) {
@@ -618,8 +621,12 @@ static void render_wall(struct RenderWallArgs *args) {
 
   int32_t sign = glm_sign(screen_space[2][0] - screen_space[0][0]);
 
+  ArenaSaveState r;
+  arena_save(*args->arena, &r);
+
   if (args->pool == NULL) {
-    struct WallSection *tmp = malloc(sizeof(*tmp));
+    struct WallSection *tmp = arena_alloc(args->arena, sizeof(*tmp));
+    assert(tmp != NULL && "Arena overflow");
 
     *tmp = (struct WallSection){
       .surface = args->surface,
@@ -656,7 +663,8 @@ static void render_wall(struct RenderWallArgs *args) {
     DA_TYPE(tp_JobHandle) handles = { 0 };
 
     for (uint32_t i = 0; i < num_batches; i++) {
-      struct WallSection *tmp = malloc(sizeof(*tmp));
+      struct WallSection *tmp = arena_alloc(args->arena, sizeof(*tmp));
+      assert(tmp != NULL && "Arena overflow");
 
       *tmp = (struct WallSection){
         .surface = args->surface,
@@ -697,9 +705,11 @@ static void render_wall(struct RenderWallArgs *args) {
 
     DA_FREE(&handles);
   }
+  arena_restore(args->arena, r);
 }
 
-void dsr_render_walls(struct tp_ThreadPool *pool, struct dsr_Surface *surface,
+void dsr_render_walls(struct Arena *arena, struct tp_ThreadPool *pool,
+                      struct dsr_Surface *surface,
                       const struct dsr_Scene *scene,
                       const struct hog_Camera *camera, int64_t current_sector,
                       vec2 proj_plane_size) {
@@ -734,6 +744,7 @@ void dsr_render_walls(struct tp_ThreadPool *pool, struct dsr_Surface *surface,
 
     .cam_sector_index = current_sector,
 
+    .arena = arena,
   };
 
   DA_APPEND(&render_wall_args.portal_queue.portals, ({
@@ -759,7 +770,6 @@ void dsr_render_walls(struct tp_ThreadPool *pool, struct dsr_Surface *surface,
     portal;
   }));
 
-#if 1
   while (render_wall_args.portal_queue.portals.count) {
     struct Portal *p = &DA_AT(render_wall_args.portal_queue.portals, 0);
     //printf("Sector: %d\n", p->sector_index);
@@ -810,41 +820,6 @@ void dsr_render_walls(struct tp_ThreadPool *pool, struct dsr_Surface *surface,
 
     DA_POP(&render_wall_args.portal_queue.portals, 0);
   }
-
-#else
-  for (uint32_t i = 0; i < scene->sectors.count; i++) {
-    struct dsr_Sector *sector = &DA_AT(scene->sectors, i);
-    for (uint32_t j = 0; j < sector->walls.count; j++) {
-      uint32_t wall_index = DA_AT(sector->walls, j);
-
-      struct hog_Camera temp_cam = *camera;
-
-      glm_vec3_add(
-        temp_cam.position,
-        (vec3){ 0.0f,
-                DA_AT(scene->sectors, (uint32_t)current_sector).floor_height,
-                0.0f },
-        temp_cam.position);
-
-      uint8_t colour[4] = {
-        DA_AT(palette, wall_index)[0],
-        DA_AT(palette, wall_index)[1],
-        DA_AT(palette, wall_index)[2],
-        255,
-      };
-
-      render_wall_args.drawing_sector_index = i;
-      render_wall_args.wall_index = wall_index;
-      render_wall_args.camera = &temp_cam;
-      memcpy(render_wall_args.wall_colour, colour, sizeof(colour));
-
-      // dsr_render_wall(pool, surface, scene, current_sector, i, wall_index,
-      // &temp_cam, proj_plane_size, colour, &portal_queue);
-
-      render_wall(&render_wall_args);
-    }
-  }
-#endif
 
   DA_FREE(&palette);
   DA_FREE(&render_wall_args.portal_queue.portals);

@@ -2,6 +2,7 @@
 #include "util/dynamic_array.h"
 #include "common/camera.h"
 #include "util/thread_pool.h"
+#include "util/arena.h"
 
 #include <SDL/include/SDL3/SDL.h>
 
@@ -17,6 +18,8 @@
 
 #define PLAYER_SPEED 12.0f
 #define PLAYER_ANGULAR_SPEED 3.5f
+
+#define PAGE_SIZE 4096
 
 enum direction {
   FORWARD = 0,
@@ -136,6 +139,8 @@ int main(int argc, char **argv) {
   }
 
   struct tp_ThreadPool *pool = tp_create_pool(SDL_GetCPUCount() - 1);
+
+  struct Arena arena = arena_create(PAGE_SIZE * 2);
 
   SDL_Event e;
   while (true) {
@@ -294,14 +299,20 @@ int main(int argc, char **argv) {
 
     //glm_vec3_print(cam.position, stdout);
     if (scene.sectors.count > 0) {
-      dsr_render(&dsr_surface, &scene, &cam, 0);
-      //dsr_render_multithreaded(pool, &dsr_surface, &scene, &cam, 0);
+      ArenaSaveState r;
+      arena_save(arena, &r);
+
+      //dsr_render(&arena, &dsr_surface, &scene, &cam, 0);
+      dsr_render_multithreaded(&arena, pool, &dsr_surface, &scene, &cam, 0);
+
+      arena_restore(&arena, r);
     }
 
     SDL_UpdateWindowSurface(window);
   }
 
   tp_free_pool(pool);
+  arena_free(&arena);
 
   SDL_DestroySurface(surface);
   SDL_DestroyWindow(window);
