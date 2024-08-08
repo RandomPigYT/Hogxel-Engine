@@ -413,13 +413,14 @@ static void *draw_wall_section(struct WallSection *args) {
   int32_t draw_width[2];
   get_draw_width(args->portal->portal_mask, NULL, draw_width);
 
-  args->x1 = glm_imax(args->x1, draw_width[0]);
-  args->x2 = glm_imin(args->x2, draw_width[1]);
-
-  int32_t l = args->x2 - args->x1;
-  if (l == 0) {
+  if (draw_width[1] - draw_width[0] == 0) {
     return NULL;
   }
+
+  int32_t l = args->x2 - args->x1;
+
+  args->x1 = glm_imax(args->x1, draw_width[0]);
+  args->x2 = glm_imin(args->x2, draw_width[1]);
 
   //printf("=======================================================\n\n");
 
@@ -580,11 +581,6 @@ static void render_wall(struct RenderWallArgs *args) {
   //printf("\n");
   //printf("======================================================\n");
   //printf("\n");
-
-  //draw_vertical_line(surface, screen_space[0][0], screen_space[0][1],
-  //                   screen_space[1][1], (uint8_t[]){ 255, 0, 0, 255 });
-  //draw_vertical_line(surface, screen_space[2][0], screen_space[2][1],
-  //                     screen_space[3][1], (uint8_t[]){ 255, 0, 0, 255 });
 
   int32_t x1, x2, z1, z2;
   int32_t y_coords[4];
