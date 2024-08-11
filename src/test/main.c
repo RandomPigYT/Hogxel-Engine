@@ -75,6 +75,55 @@ void update_dsr_surface(struct dsr_Surface *dsr_surface,
   *dsr_surface = s;
 }
 
+static inline bool is_zero(float n, float eps) {
+  return n < eps && n > -eps;
+}
+
+static bool intersect_line_segments(const vec4 line1[2], const vec4 line2[2],
+                                    vec4 intersection) {
+  vec2 p = { line1[0][0], line1[0][2] };
+  vec2 q = { line2[0][0], line2[0][2] };
+
+  vec2 r = {
+    line1[1][0] - line1[0][0],
+    line1[1][2] - line1[0][2],
+  };
+
+  vec2 s = {
+    line2[1][0] - line2[0][0],
+    line2[1][2] - line2[0][2],
+  };
+
+  float r_cross_s = glm_vec2_cross(r, s);
+  if (is_zero(r_cross_s, DSR_FLT_EPSILON)) {
+    intersection[0] = INFINITY;
+    intersection[2] = INFINITY;
+
+    return false;
+  }
+
+  vec2 q_sub_p;
+  glm_vec2_sub(q, p, q_sub_p);
+
+  float q_sub_p_cross_s = glm_vec2_cross(q_sub_p, s);
+  float q_sub_p_cross_r = glm_vec2_cross(q_sub_p, r);
+
+  float t = q_sub_p_cross_s / r_cross_s;
+  float u = q_sub_p_cross_r / r_cross_s;
+
+  if (!(t >= 0.0f && t <= 1.0f && u >= 0.0f && u <= 1.0f)) {
+    intersection[0] = INFINITY;
+    intersection[2] = INFINITY;
+
+    return false;
+  }
+
+  intersection[0] = p[0] + r[0] * t;
+  intersection[2] = p[1] + r[1] * t;
+
+  return true;
+}
+
 int main(int argc, char **argv) {
   if (argc <= 1) {
     fprintf(stderr, "Bad usage\n");
@@ -141,6 +190,8 @@ int main(int argc, char **argv) {
   struct tp_ThreadPool *pool = tp_create_pool(SDL_GetCPUCount() - 1);
 
   struct Arena arena = arena_create(PAGE_SIZE * 2);
+
+  uint32_t curr_sector = 0;
 
   SDL_Event e;
   while (true) {
@@ -223,8 +274,15 @@ int main(int argc, char **argv) {
       }
     }
 
+    vec3 prev_pos;
+    glm_vec3_copy(cam.position, prev_pos);
+
+    bool is_moving = false;
     if (moving[FORWARD]) {
+      is_moving = true;
+
       vec3 dir;
+
       glm_vec3_copy(cam.direction, dir);
 
       glm_vec3_normalize(dir);
@@ -235,7 +293,10 @@ int main(int argc, char **argv) {
     }
 
     if (moving[BACKWARDS]) {
+      is_moving = true;
+
       vec3 dir;
+
       glm_vec3_copy(cam.direction, dir);
 
       glm_vec3_normalize(dir);
@@ -247,7 +308,10 @@ int main(int argc, char **argv) {
     }
 
     if (moving[RIGHT]) {
+      is_moving = true;
+
       vec3 dir;
+
       glm_vec3_copy(cam.direction, dir);
 
       glm_vec3_negate(dir);
@@ -262,7 +326,10 @@ int main(int argc, char **argv) {
     }
 
     if (moving[LEFT]) {
+      is_moving = true;
+
       vec3 dir;
+
       glm_vec3_copy(cam.direction, dir);
 
       glm_vec3_normalize(dir);
@@ -273,6 +340,51 @@ int main(int argc, char **argv) {
 
       glm_vec3_add(cam.position, dir, cam.position);
     }
+
+    if (is_moving) {
+      auto sector = &DA_AT(scene.sectors, curr_sector);
+      for (uint32_t j = 0; j < sector->walls.count; j++) {
+        auto wall = &DA_AT(scene.walls, DA_AT(sector->walls, j));
+        if (!wall->is_portal) {
+          continue;
+        }
+
+        vec4 l1[2] = {
+          {
+            [0] = DA_AT(scene.vertices, wall->vertices[0])[0],
+            [2] = DA_AT(scene.vertices, wall->vertices[0])[1],
+          },
+
+          {
+            [0] = DA_AT(scene.vertices, wall->vertices[1])[0],
+            [2] = DA_AT(scene.vertices, wall->vertices[1])[1],
+          },
+        };
+
+        vec4 l2[2] = {
+          {
+            [0] = cam.position[0],
+            [2] = cam.position[2],
+          },
+
+          {
+            [0] = prev_pos[0],
+            [2] = prev_pos[2],
+          },
+        };
+
+        vec4 inter;
+        if (intersect_line_segments(l1, l2, inter)) {
+          curr_sector = wall->shared_with[0] != curr_sector
+                          ? wall->shared_with[0]
+                          : wall->shared_with[1];
+
+          goto Break;
+        }
+      }
+    }
+
+Break:
 
     if (moving[UP]) {
       cam.position[1] += PLAYER_SPEED * deltatime;
@@ -303,7 +415,8 @@ int main(int argc, char **argv) {
       arena_save(arena, &r);
 
       //dsr_render(&arena, &dsr_surface, &scene, &cam, 0);
-      dsr_render_multithreaded(&arena, pool, &dsr_surface, &scene, &cam, 0);
+      dsr_render_multithreaded(&arena, pool, &dsr_surface, &scene, &cam,
+                               curr_sector);
 
       arena_restore(&arena, r);
     }

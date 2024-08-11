@@ -418,6 +418,7 @@ static void *draw_wall_section(struct WallSection *args) {
   }
 
   int32_t l = args->x2 - args->x1;
+  int32_t unclamped_x1 = args->x1;
 
   args->x1 = glm_imax(args->x1, draw_width[0]);
   args->x2 = glm_imin(args->x2, draw_width[1]);
@@ -430,7 +431,7 @@ static void *draw_wall_section(struct WallSection *args) {
       continue;
     }
 
-    float t = (float)(x - args->x1) / (float)l;
+    float t = (float)(x - unclamped_x1) / (float)l;
 
     float depth_lerp =
       glm_lerp(args->z1, args->z2, t) / args->camera->far_clipping_plane;
