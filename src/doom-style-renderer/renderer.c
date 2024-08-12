@@ -9,7 +9,7 @@
 #include "util/arena.h"
 
 #include "doom-style-renderer.h"
-#include "render-walls.h"
+#include "render-walls/render-walls.h"
 
 #include <stdio.h>
 #include <string.h>
