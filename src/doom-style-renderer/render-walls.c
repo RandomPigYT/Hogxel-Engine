@@ -282,6 +282,10 @@ static void draw_vertical_line(struct dsr_Surface *surface, int32_t x,
 
   y1 = int_clamp(y1, 0, surface->height - 1);
   y2 = int_clamp(y2, 0, surface->height - 1);
+  if (y1 == y2) {
+    return;
+  }
+
   for (int32_t y = y1; y <= y2; y++) {
     DSR_PIXEL_AT(surface, surface->pixels, x, y) = DSR_COLOUR(
       surface->pixel_format, colour[0], colour[1], colour[2], colour[3]);
@@ -391,7 +395,7 @@ static bool get_draw_height(struct PortalMask *mask, int32_t x, int y[2],
       return false;
     }
 
-    float t = (float)(x - mask->portal_screen_space[0][0]) / (float)l;
+    float t = (float)(x - mask->prev->portal_screen_space[0][0]) / (float)l;
 
     prev_portal_height[0] =
       lround(glm_lerp(mask->prev->portal_screen_space[0][1],
@@ -423,11 +427,8 @@ static void *draw_wall_section(struct WallSection *args) {
   args->x1 = glm_imax(args->x1, draw_width[0]);
   args->x2 = glm_imin(args->x2, draw_width[1]);
 
-  //printf("=======================================================\n\n");
-
   for (int32_t x = args->x_range[0]; x <= args->x_range[1]; x++) {
-    if (x < args->portal->portal_mask->portal_screen_space[0][0] ||
-        x > args->portal->portal_mask->portal_screen_space[3][0]) {
+    if (x < args->x1 || x > args->x2) {
       continue;
     }
 

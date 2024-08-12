@@ -56,4 +56,4 @@ clean:
 	-@rm -rf $(BIN)
 
 run: bin/test
-	./bin/test "./assets/scenes/test-scene.dsrs"
+	./bin/test "./assets/scenes/neighbours.dsrs"
