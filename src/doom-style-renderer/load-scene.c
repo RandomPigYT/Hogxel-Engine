@@ -1,5 +1,4 @@
 #include "doom-style-renderer.h"
-#include "scene-integrity.h"
 
 #ifndef UTIL_FILE_IO_IMPLEMENTATION
 #define UTIL_FILE_IO_IMPLEMENTATION
@@ -788,16 +787,6 @@ bool dsr_load_scene(const char *scene_path, struct dsr_Scene *scene) {
   printf("Parse result: %d\n", res);
 
   if (res != PARSE_ERROR_NONE) {
-    return false;
-  }
-
-  uint32_t failed_at_sector = 0;
-  uint32_t failed_at_wall = 0;
-  uint32_t actual_wall_index = 0;
-
-  auto whee = assert_scene_integrity(scene, &failed_at_sector, &failed_at_wall,
-                                     &actual_wall_index);
-  if (whee != FAIL_CONDITION_NONE) {
     return false;
   }
 
