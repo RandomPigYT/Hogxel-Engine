@@ -54,6 +54,17 @@ dirs:
 clean:
 	-@rm -rf $(OBJ)
 	-@rm -rf $(BIN)
+	-@rm -f ./val.txt
 
 run: bin/test
 	./bin/test "./assets/scenes/neighbours.dsrs"
+
+valgrind: 
+	@valgrind --leak-check=full \
+         --show-leak-kinds=all \
+         --track-origins=yes \
+         --verbose \
+         --log-file=./val.txt \
+				 --keep-debuginfo=yes\
+         ./bin/test	"./assets/scenes/neighbours.dsrs"
+

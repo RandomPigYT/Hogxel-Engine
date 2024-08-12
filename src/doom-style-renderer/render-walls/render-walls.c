@@ -65,26 +65,6 @@ static inline void to_screen_space(const struct dsr_Surface *surface,
            (surface->height - 1));
 }
 
-struct WallSection {
-  struct dsr_Surface *surface;
-  const struct dsr_Scene *scene;
-  const struct hog_Camera *camera;
-
-  const struct Portal *portal;
-
-  int32_t screen_space[4][2];
-  int32_t x1, x2, z1, z2; // Range of the entire wall
-
-  int32_t x_range[2]; // Range of wall section
-  int32_t sign;
-
-  const struct dsr_Sector *cam_sector;
-  const struct dsr_Sector *drawing_sector;
-  const struct dsr_Wall *wall;
-
-  uint8_t colour[4];
-};
-
 static void get_draw_width(struct PortalMask *mask, int x[2],
                            int32_t masked_x[2]) {
   int32_t portal_width[2];
@@ -172,6 +152,27 @@ static bool get_draw_height(struct PortalMask *mask, int32_t x, int y[2],
   return get_draw_height(mask->prev, x, masked_y, masked_y);
 }
 
+struct WallSection {
+  struct dsr_Surface *surface;
+  const struct dsr_Scene *scene;
+  const struct hog_Camera *camera;
+
+  float *depth_buffer;
+
+  const struct Portal *portal;
+
+  int32_t screen_space[4][2];
+  int32_t x1, x2, z1, z2; // Range of the entire wall
+
+  int32_t x_range[2]; // Range of wall section
+  int32_t sign;
+
+  const struct dsr_Sector *cam_sector;
+  const struct dsr_Sector *drawing_sector;
+  const struct dsr_Wall *wall;
+
+  uint8_t colour[4];
+};
 static void *draw_wall_section(struct WallSection *args) {
   int32_t draw_width[2];
   get_draw_width(args->portal->portal_mask, NULL, draw_width);
@@ -196,6 +197,10 @@ static void *draw_wall_section(struct WallSection *args) {
     float depth_lerp =
       glm_lerp(args->z1, args->z2, t) / args->camera->far_clipping_plane;
 
+    if (depth_lerp > args->depth_buffer[x]) {
+      continue;
+    }
+
     if (args->sign < 0) {
       t = 1.0f - t;
     }
@@ -204,6 +209,10 @@ static void *draw_wall_section(struct WallSection *args) {
 
     if (!get_draw_height(args->portal->portal_mask, x, NULL, draw_height)) {
       return NULL;
+    }
+
+    if (!args->wall->is_portal) {
+      args->depth_buffer[x] = depth_lerp;
     }
 
     int32_t y[2] = {
@@ -251,6 +260,8 @@ struct RenderWallArgs {
   const struct hog_Camera *camera;
   const vec2 proj_plane_size;
 
+  float *depth_buffer;
+
   struct tp_ThreadPool *pool;
 
   uint32_t cam_sector_index;
@@ -264,7 +275,6 @@ struct RenderWallArgs {
 
   struct Arena *arena;
 };
-
 static void render_wall(struct RenderWallArgs *args) {
   struct dsr_Wall *wall = &DA_AT(args->scene->walls, args->wall_index);
 
@@ -425,6 +435,8 @@ static void render_wall(struct RenderWallArgs *args) {
       .scene = args->scene,
       .camera = args->camera,
 
+      .depth_buffer = args->depth_buffer,
+
       .portal = args->portal,
 
       .x1 = x1,
@@ -461,6 +473,8 @@ static void render_wall(struct RenderWallArgs *args) {
         .surface = args->surface,
         .scene = args->scene,
         .camera = args->camera,
+
+        .depth_buffer = args->depth_buffer,
 
         .portal = args->portal,
 
@@ -530,6 +544,14 @@ void dsr_render_walls(struct Arena *arena, struct tp_ThreadPool *pool,
     .camera = camera,
     .proj_plane_size = { proj_plane_size[0], proj_plane_size[1] },
 
+    .depth_buffer = ({
+      auto tmp =
+        malloc(surface->width * sizeof(*render_wall_args.depth_buffer));
+      assert(tmp != NULL && "Failed to allocate memory");
+
+      tmp;
+    }),
+
     .pool = pool,
 
     .cam_sector_index = current_sector,
@@ -561,6 +583,10 @@ void dsr_render_walls(struct Arena *arena, struct tp_ThreadPool *pool,
   }));
 
   while (render_wall_args.portal_queue.portals.count) {
+    for (int32_t i = 0; i < surface->width; i++) {
+      render_wall_args.depth_buffer[i] = INFINITY;
+    }
+
     struct Portal *p = &DA_AT(render_wall_args.portal_queue.portals, 0);
     //printf("Sector: %d\n", p->sector_index);
     //printf("draw_area {\n"
@@ -608,6 +634,7 @@ void dsr_render_walls(struct Arena *arena, struct tp_ThreadPool *pool,
     DA_POP(&render_wall_args.portal_queue.portals, 0);
   }
 
+  free(render_wall_args.depth_buffer);
   DA_FREE(&palette);
   DA_FREE(&render_wall_args.portal_queue.portals);
 }

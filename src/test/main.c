@@ -414,9 +414,9 @@ Break:
       ArenaSaveState r;
       arena_save(arena, &r);
 
-      //dsr_render(&arena, &dsr_surface, &scene, &cam, 0);
-      dsr_render_multithreaded(&arena, pool, &dsr_surface, &scene, &cam,
-                               curr_sector);
+      dsr_render(&arena, &dsr_surface, &scene, &cam, curr_sector);
+      //dsr_render_multithreaded(&arena, pool, &dsr_surface, &scene, &cam,
+      //                       curr_sector);
 
       arena_restore(&arena, r);
     }
