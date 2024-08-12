@@ -1,6 +1,7 @@
 #ifndef DSR_RENDER_WALL_PROJ_MATH_H
 #define DSR_RENDER_WALL_PROJ_MATH_H
 
+#include "doom-style-renderer.h"
 #include "common/camera.h"
 #include <cglm/include/cglm/cglm.h>
 
