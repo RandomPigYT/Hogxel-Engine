@@ -36,14 +36,14 @@ bool moving[DIR_COUNT] = { 0 };
 int32_t turning = 0;
 
 void update_dsr_surface(struct dsr_Surface *dsr_surface,
-                        const SDL_Surface *sdl_surface) {
+                        const SDL_Surface *sdl_surface, float factor) {
   const SDL_PixelFormatDetails *format =
     SDL_GetPixelFormatDetails(sdl_surface->format);
 
   struct dsr_Surface s = {
-    .width = sdl_surface->w,
-    .height = sdl_surface->h,
-    .stride = sdl_surface->pitch,
+    .width = sdl_surface->w * factor,
+    .height = sdl_surface->h * factor,
+    .stride = sdl_surface->w * factor * format->bytes_per_pixel,
 
     .pixel_format = ({
       struct dsr_PixelFormat pixel_format = {
@@ -69,8 +69,9 @@ void update_dsr_surface(struct dsr_Surface *dsr_surface,
       pixel_format;
     }),
 
-    .pixels = sdl_surface->pixels,
   };
+  s.pixels = realloc(dsr_surface->pixels, s.stride * s.height);
+  assert(s.pixels != NULL && "Failed to allocate memory");
 
   *dsr_surface = s;
 }
@@ -79,8 +80,12 @@ static inline bool is_zero(float n, float eps) {
   return n < eps && n > -eps;
 }
 
+static inline bool is_equal(float n, float to, float eps) {
+  return n < to + eps && n > to - eps;
+}
+
 static bool intersect_line_segments(const vec4 line1[2], const vec4 line2[2],
-                                    vec4 intersection) {
+                                    vec4 intersection, float *t) {
   vec2 p = { line1[0][0], line1[0][2] };
   vec2 q = { line2[0][0], line2[0][2] };
 
@@ -108,20 +113,39 @@ static bool intersect_line_segments(const vec4 line1[2], const vec4 line2[2],
   float q_sub_p_cross_s = glm_vec2_cross(q_sub_p, s);
   float q_sub_p_cross_r = glm_vec2_cross(q_sub_p, r);
 
-  float t = q_sub_p_cross_s / r_cross_s;
+  *t = q_sub_p_cross_s / r_cross_s;
   float u = q_sub_p_cross_r / r_cross_s;
 
-  if (!(t >= 0.0f && t <= 1.0f && u >= 0.0f && u <= 1.0f)) {
+  if (!(*t >= 0.0f && *t <= 1.0f && u >= 0.0f && u <= 1.0f)) {
     intersection[0] = INFINITY;
     intersection[2] = INFINITY;
 
     return false;
   }
 
-  intersection[0] = p[0] + r[0] * t;
-  intersection[2] = p[1] + r[1] * t;
+  intersection[0] = p[0] + r[0] * *t;
+  intersection[2] = p[1] + r[1] * *t;
 
   return true;
+}
+
+struct Supersample {
+  struct dsr_Surface *src;
+  struct dsr_Surface *dest;
+};
+
+static void *supersample(struct Supersample *args) {
+  for (int32_t y = 0; y < args->dest->height; y++) {
+    for (int32_t x = 0; x < args->dest->width; x++) {
+      int32_t sx = (x / (float)args->dest->width) * args->src->width;
+      int32_t sy = (y / (float)args->dest->height) * args->src->height;
+
+      DSR_PIXEL_AT(args->dest, args->dest->pixels, x, y) =
+        DSR_PIXEL_AT(args->src, args->src->pixels, sx, sy);
+    }
+  }
+
+  return NULL;
 }
 
 int main(int argc, char **argv) {
@@ -152,8 +176,10 @@ int main(int argc, char **argv) {
 
   SDL_Surface *surface = SDL_GetWindowSurface(window);
 
+  float factor = 0.3f;
+
   struct dsr_Surface dsr_surface = { 0 };
-  update_dsr_surface(&dsr_surface, surface);
+  update_dsr_surface(&dsr_surface, surface, factor);
 
   vec4 dir = { 0.0f, 0.0f, 1.0f };
   glm_vec3_normalize(dir);
@@ -211,7 +237,7 @@ int main(int argc, char **argv) {
       if (e.type == SDL_EVENT_WINDOW_RESIZED ||
           e.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
         surface = SDL_GetWindowSurface(window);
-        update_dsr_surface(&dsr_surface, surface);
+        update_dsr_surface(&dsr_surface, surface, factor);
         cam.aspect_ratio = (float)dsr_surface.width / (float)dsr_surface.height;
       }
 
@@ -373,8 +399,11 @@ int main(int argc, char **argv) {
           },
         };
 
-        vec4 inter;
-        if (intersect_line_segments(l1, l2, inter)) {
+        vec4 inter = { 0 };
+        float t = 0;
+        bool did_isect = intersect_line_segments(l1, l2, inter, &t);
+
+        if (did_isect && !is_equal(t, 1.0f, DSR_FLT_EPSILON)) {
           curr_sector = wall->shared_with[0] != curr_sector
                           ? wall->shared_with[0]
                           : wall->shared_with[1];
@@ -417,6 +446,19 @@ Break:
       dsr_render(&arena, &dsr_surface, &scene, &cam, curr_sector);
       //dsr_render_multithreaded(&arena, pool, &dsr_surface, &scene, &cam,
       //                       curr_sector);
+
+      struct dsr_Surface dest = {
+        .width = surface->w,
+        .height = surface->h,
+        .stride = surface->pitch,
+        .pixel_format = dsr_surface.pixel_format,
+        .pixels = surface->pixels,
+      };
+
+      supersample(&(struct Supersample){
+        .src = &dsr_surface,
+        .dest = &dest,
+      });
 
       arena_restore(&arena, r);
     }

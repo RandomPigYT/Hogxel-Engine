@@ -197,7 +197,7 @@ static void *draw_wall_section(struct WallSection *args) {
     float depth_lerp =
       glm_lerp(args->z1, args->z2, t) / args->camera->far_clipping_plane;
 
-    if (depth_lerp > args->depth_buffer[x]) {
+    if (!args->wall->is_portal && depth_lerp > args->depth_buffer[x]) {
       continue;
     }
 
@@ -559,6 +559,10 @@ void dsr_render_walls(struct Arena *arena, struct tp_ThreadPool *pool,
     .arena = arena,
   };
 
+  for (int32_t i = 0; i < surface->width; i++) {
+    render_wall_args.depth_buffer[i] = INFINITY;
+  }
+
   DA_APPEND(&render_wall_args.portal_queue.portals, ({
     struct Portal portal = {
       .sector_index = current_sector,
@@ -583,10 +587,6 @@ void dsr_render_walls(struct Arena *arena, struct tp_ThreadPool *pool,
   }));
 
   while (render_wall_args.portal_queue.portals.count) {
-    for (int32_t i = 0; i < surface->width; i++) {
-      render_wall_args.depth_buffer[i] = INFINITY;
-    }
-
     struct Portal *p = &DA_AT(render_wall_args.portal_queue.portals, 0);
     //printf("Sector: %d\n", p->sector_index);
     //printf("draw_area {\n"
