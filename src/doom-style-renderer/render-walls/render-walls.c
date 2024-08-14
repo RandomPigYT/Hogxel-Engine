@@ -399,6 +399,8 @@ static void render_wall(struct RenderWallArgs *args) {
     if (should_append) {
       p.from_sector_index = args->drawing_sector_index;
       p.portal_mask = arena_alloc(args->arena, sizeof(*p.portal_mask));
+      assert(p.portal_mask != NULL && "Arena overflow");
+
       p.portal_mask->prev = args->portal->portal_mask;
 
       // The y axis of the world space coordinates are flipped when converting to scree space,
@@ -570,6 +572,7 @@ void dsr_render_walls(struct Arena *arena, struct tp_ThreadPool *pool,
     };
 
     portal.portal_mask = arena_alloc(arena, sizeof(*portal.portal_mask));
+    assert(portal.portal_mask != NULL && "Arena overflow");
 
     int32_t portal_screen_space[4][2] = {
       { 0, 0 },

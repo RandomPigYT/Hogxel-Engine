@@ -80,10 +80,6 @@ static inline bool is_zero(float n, float eps) {
   return n < eps && n > -eps;
 }
 
-static inline bool is_equal(float n, float to, float eps) {
-  return n < to + eps && n > to - eps;
-}
-
 static bool intersect_line_segments(const vec4 line1[2], const vec4 line2[2],
                                     vec4 intersection, float *t) {
   vec2 p = { line1[0][0], line1[0][2] };
@@ -176,7 +172,7 @@ int main(int argc, char **argv) {
 
   SDL_Surface *surface = SDL_GetWindowSurface(window);
 
-  float factor = 0.3f;
+  float factor = 0.75f;
 
   struct dsr_Surface dsr_surface = { 0 };
   update_dsr_surface(&dsr_surface, surface, factor);
@@ -242,60 +238,86 @@ int main(int argc, char **argv) {
       }
 
       if (e.type == SDL_EVENT_KEY_DOWN) {
-        if (e.key.key == SDLK_W) {
-          moving[FORWARD] = true;
-        }
-        if (e.key.key == SDLK_A) {
-          moving[LEFT] = true;
-        }
-        if (e.key.key == SDLK_S) {
-          moving[BACKWARDS] = true;
-        }
-        if (e.key.key == SDLK_D) {
-          moving[RIGHT] = true;
-        }
+        switch (e.key.key) {
+          case SDLK_W: {
+            moving[FORWARD] = true;
+          } break;
 
-        if (e.key.key == SDLK_SPACE) {
-          moving[UP] = true;
-        }
-        if (e.key.key == SDLK_LSHIFT) {
-          moving[DOWN] = true;
-        }
+          case SDLK_A: {
+            moving[LEFT] = true;
+          } break;
 
-        if (e.key.key == SDLK_J) {
-          turning = -1;
-        }
-        if (e.key.key == SDLK_L) {
-          turning = 1;
+          case SDLK_S: {
+            moving[BACKWARDS] = true;
+          } break;
+
+          case SDLK_D: {
+            moving[RIGHT] = true;
+          } break;
+
+          case SDLK_SPACE: {
+            moving[UP] = true;
+          } break;
+
+          case SDLK_LSHIFT: {
+            moving[DOWN] = true;
+          } break;
+
+          case SDLK_J: {
+            turning = -1;
+          } break;
+
+          case SDLK_L: {
+            turning = 1;
+          } break;
+
+          default: {
+            break;
+          }
         }
       }
 
       if (e.type == SDL_EVENT_KEY_UP) {
-        if (e.key.key == SDLK_W) {
-          moving[FORWARD] = false;
-        }
-        if (e.key.key == SDLK_A) {
-          moving[LEFT] = false;
-        }
-        if (e.key.key == SDLK_S) {
-          moving[BACKWARDS] = false;
-        }
-        if (e.key.key == SDLK_D) {
-          moving[RIGHT] = false;
-        }
+        switch (e.key.key) {
+          case SDLK_W: {
+            moving[FORWARD] = false;
+          } break;
 
-        if (e.key.key == SDLK_SPACE) {
-          moving[UP] = false;
-        }
-        if (e.key.key == SDLK_LSHIFT) {
-          moving[DOWN] = false;
-        }
+          case SDLK_A: {
+            moving[LEFT] = false;
+          } break;
 
-        if (e.key.key == SDLK_J && turning == -1) {
-          turning = 0;
-        }
-        if (e.key.key == SDLK_L && turning == 1) {
-          turning = 0;
+          case SDLK_S: {
+            moving[BACKWARDS] = false;
+          } break;
+
+          case SDLK_D: {
+            moving[RIGHT] = false;
+          } break;
+
+          case SDLK_SPACE: {
+            moving[UP] = false;
+          } break;
+
+          case SDLK_LSHIFT: {
+            moving[DOWN] = false;
+          } break;
+
+          case SDLK_J: {
+            if (turning == -1) {
+              turning = 0;
+            }
+          } break;
+
+          case SDLK_L: {
+            if (turning == 1) {
+              turning = 0;
+            }
+          } break;
+
+          default: {
+            break;
+          }
         }
       }
     }
@@ -371,10 +393,6 @@ int main(int argc, char **argv) {
       auto sector = &DA_AT(scene.sectors, curr_sector);
       for (uint32_t j = 0; j < sector->walls.count; j++) {
         auto wall = &DA_AT(scene.walls, DA_AT(sector->walls, j));
-        if (!wall->is_portal) {
-          continue;
-        }
-
         vec4 l1[2] = {
           {
             [0] = DA_AT(scene.vertices, wall->vertices[0])[0],
@@ -403,12 +421,34 @@ int main(int argc, char **argv) {
         float t = 0;
         bool did_isect = intersect_line_segments(l1, l2, inter, &t);
 
-        if (did_isect) {
-          curr_sector = wall->shared_with[0] != curr_sector
-                          ? wall->shared_with[0]
-                          : wall->shared_with[1];
+        if (wall->is_portal) {
+          if (did_isect) {
+            curr_sector = wall->shared_with[0] != curr_sector
+                            ? wall->shared_with[0]
+                            : wall->shared_with[1];
 
-          goto Break;
+            goto Break;
+          }
+
+        } else {
+          if (did_isect) {
+            vec4 wall_dir;
+            glm_vec4_sub(l1[1], l1[0], wall_dir);
+            glm_vec4_normalize(wall_dir);
+
+            vec4 vel = { 0 };
+            glm_vec4_sub(l2[0], l2[1], vel);
+
+            float scale = glm_vec4_dot(vel, wall_dir);
+            glm_vec4_scale(wall_dir, scale, wall_dir);
+
+            vec3 new_pos;
+            glm_vec3_add(prev_pos, wall_dir, new_pos);
+
+            glm_vec3_copy(new_pos, cam.position);
+
+            glm_vec3_copy(inter, prev_pos);
+          }
         }
       }
     }
@@ -443,9 +483,9 @@ Break:
       ArenaSaveState r;
       arena_save(arena, &r);
 
-      dsr_render(&arena, &dsr_surface, &scene, &cam, curr_sector);
-      //dsr_render_multithreaded(&arena, pool, &dsr_surface, &scene, &cam,
-      //                       curr_sector);
+      //dsr_render(&arena, &dsr_surface, &scene, &cam, curr_sector);
+      dsr_render_multithreaded(&arena, pool, &dsr_surface, &scene, &cam,
+                               curr_sector);
 
       struct dsr_Surface dest = {
         .width = surface->w,
