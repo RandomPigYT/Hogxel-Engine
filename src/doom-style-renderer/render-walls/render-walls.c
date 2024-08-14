@@ -288,8 +288,7 @@ static void render_wall(struct RenderWallArgs *args) {
   get_relative_coords(args->camera, wall_world_coords[0], relative_coords[0]);
   get_relative_coords(args->camera, wall_world_coords[1], relative_coords[1]);
 
-  if (relative_coords[0][2] < args->camera->near_clipping_plane &&
-      relative_coords[1][2] < args->camera->near_clipping_plane) {
+  if (relative_coords[0][2] < 0.0f && relative_coords[1][2] < 0.0f) {
     return;
 
   } else if (relative_coords[0][2] > args->camera->far_clipping_plane &&

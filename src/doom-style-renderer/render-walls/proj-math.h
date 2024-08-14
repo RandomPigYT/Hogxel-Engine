@@ -32,13 +32,14 @@ static inline void get_relative_coords(const struct hog_Camera *camera,
 static inline float x_projection(const struct hog_Camera *camera,
                                  vec4 relative_coords) {
   //printf("relative: %f\n", relative_coords[2]);
-  return relative_coords[0] * camera->near_clipping_plane / relative_coords[2];
+  return relative_coords[0] * camera->near_clipping_plane /
+         (relative_coords[2] + DSR_FLT_EPSILON);
 }
 
 static inline void y_projection(const struct hog_Camera *camera,
                                 const vec4 relative_coords, float floor_height,
                                 float ceil_height, vec2 projected) {
-  float depth = relative_coords[2];
+  float depth = relative_coords[2] + DSR_FLT_EPSILON;
   float cam_height = camera->position[1];
 
   projected[0] = ceil_height - cam_height;
@@ -103,12 +104,9 @@ static bool clipped_wall_positions(const vec4 relative_coords[2],
   glm_vec4_copy((float *)relative_coords[0], clipped[0]);
   glm_vec4_copy((float *)relative_coords[1], clipped[1]);
 
-  // Clip by near clipping plane
+  // Clip by the z = 0 line.
 
-  //printf("Clipped before: \n");
-  //glm_vec4_print(clipped[0], stdout);
-  //glm_vec4_print(clipped[1], stdout);
-  if (clipped[0][2] < camera->near_clipping_plane) {
+  if (clipped[0][2] < 0.0f) {
     vec4 dir;
     glm_vec4_sub((float *)clipped[0], (float *)clipped[1], dir);
 
@@ -116,14 +114,14 @@ static bool clipped_wall_positions(const vec4 relative_coords[2],
       return false;
     }
 
-    float t = (camera->near_clipping_plane - clipped[1][2]) / dir[2];
+    float t = (0.0f - clipped[1][2]) / dir[2];
 
-    clipped[0][2] = camera->near_clipping_plane;
+    clipped[0][2] = 0.0f;
     clipped[0][0] = clipped[1][0] + dir[0] * t;
 
     //glm_vec4_print(clipped[0], stdout);
 
-  } else if (clipped[1][2] < camera->near_clipping_plane) {
+  } else if (clipped[1][2] < 0.0f) {
     vec4 dir;
     glm_vec4_sub((float *)clipped[1], (float *)clipped[0], dir);
 
@@ -131,9 +129,9 @@ static bool clipped_wall_positions(const vec4 relative_coords[2],
       return false;
     }
 
-    float t = (camera->near_clipping_plane - clipped[0][2]) / dir[2];
+    float t = (0.0f - clipped[0][2]) / dir[2];
 
-    clipped[1][2] = camera->near_clipping_plane;
+    clipped[1][2] = 0.0f;
     clipped[1][0] = clipped[0][0] + dir[0] * t;
   }
 

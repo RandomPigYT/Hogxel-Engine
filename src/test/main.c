@@ -403,7 +403,7 @@ int main(int argc, char **argv) {
         float t = 0;
         bool did_isect = intersect_line_segments(l1, l2, inter, &t);
 
-        if (did_isect && !is_equal(t, 1.0f, DSR_FLT_EPSILON)) {
+        if (did_isect) {
           curr_sector = wall->shared_with[0] != curr_sector
                           ? wall->shared_with[0]
                           : wall->shared_with[1];
