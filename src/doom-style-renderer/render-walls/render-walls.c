@@ -20,6 +20,7 @@ struct PortalMask {
 
 struct Portal {
   uint32_t sector_index;
+  int64_t wall_index;
   int64_t from_sector_index;
   struct PortalMask *portal_mask;
 };
@@ -197,7 +198,7 @@ static void *draw_wall_section(struct WallSection *args) {
     float depth_lerp =
       glm_lerp(args->z1, args->z2, t) / args->camera->far_clipping_plane;
 
-    if (!args->wall->is_portal && depth_lerp > args->depth_buffer[x]) {
+    if (/* !args->wall->is_portal && */ depth_lerp > args->depth_buffer[x]) {
       continue;
     }
 
@@ -211,9 +212,9 @@ static void *draw_wall_section(struct WallSection *args) {
       return NULL;
     }
 
-    if (!args->wall->is_portal) {
-      args->depth_buffer[x] = depth_lerp;
-    }
+    //if (!args->wall->is_portal) {
+    args->depth_buffer[x] = depth_lerp;
+    //}
 
     int32_t y[2] = {
       int_clamp(
@@ -240,13 +241,15 @@ static void *draw_wall_section(struct WallSection *args) {
       draw_vertical_line(args->surface, x, y[0], y[1], c);
 
     } else {
-      if (args->drawing_sector->ceil_height < args->cam_sector->ceil_height) {
-        draw_vertical_line(args->surface, x, y[0], draw_height[0], c);
-      }
+      draw_vertical_line(args->surface, x, y[0], y[1], c);
 
-      if (args->drawing_sector->floor_height > args->cam_sector->floor_height) {
-        draw_vertical_line(args->surface, x, y[0], draw_height[1], c);
-      }
+      //if (args->drawing_sector->ceil_height < args->cam_sector->ceil_height) {
+      //  draw_vertical_line(args->surface, x, y[0], draw_height[0], c);
+      //}
+
+      //if (args->drawing_sector->floor_height > args->cam_sector->floor_height) {
+      //  draw_vertical_line(args->surface, x, y[0], draw_height[1], c);
+      //}
     }
   }
 
@@ -275,7 +278,12 @@ struct RenderWallArgs {
 
   struct Arena *arena;
 };
+
 static void render_wall(struct RenderWallArgs *args) {
+  if (args->wall_index == args->portal->wall_index) {
+    return;
+  }
+
   struct dsr_Wall *wall = &DA_AT(args->scene->walls, args->wall_index);
 
   vec4 wall_world_coords[2] = { 0 };
@@ -398,6 +406,7 @@ static void render_wall(struct RenderWallArgs *args) {
 
     if (should_append) {
       p.from_sector_index = args->drawing_sector_index;
+      p.wall_index = args->wall_index;
       p.portal_mask = arena_alloc(args->arena, sizeof(*p.portal_mask));
       assert(p.portal_mask != NULL && "Arena overflow");
 
@@ -560,15 +569,11 @@ void dsr_render_walls(struct Arena *arena, struct tp_ThreadPool *pool,
     .arena = arena,
   };
 
-  for (int32_t i = 0; i < surface->width; i++) {
-    render_wall_args.depth_buffer[i] = INFINITY;
-  }
-
   DA_APPEND(&render_wall_args.portal_queue.portals, ({
     struct Portal portal = {
       .sector_index = current_sector,
       .from_sector_index = current_sector,
-
+      .wall_index = -1,
     };
 
     portal.portal_mask = arena_alloc(arena, sizeof(*portal.portal_mask));
@@ -589,6 +594,9 @@ void dsr_render_walls(struct Arena *arena, struct tp_ThreadPool *pool,
   }));
 
   while (render_wall_args.portal_queue.portals.count) {
+    for (int32_t i = 0; i < surface->width; i++) {
+      render_wall_args.depth_buffer[i] = INFINITY;
+    }
     struct Portal *p = &DA_AT(render_wall_args.portal_queue.portals, 0);
     //printf("Sector: %d\n", p->sector_index);
     //printf("draw_area {\n"
@@ -606,6 +614,8 @@ void dsr_render_walls(struct Arena *arena, struct tp_ThreadPool *pool,
     render_wall_args.portal = p;
     render_wall_args.drawing_sector_index = p->sector_index;
 
+    // Temporary code {
+
     struct hog_Camera temp_cam = *camera;
 
     glm_vec3_add(
@@ -614,6 +624,8 @@ void dsr_render_walls(struct Arena *arena, struct tp_ThreadPool *pool,
               DA_AT(scene->sectors, (uint32_t)current_sector).floor_height,
               0.0f },
       temp_cam.position);
+
+    // }
 
     render_wall_args.camera = &temp_cam;
 

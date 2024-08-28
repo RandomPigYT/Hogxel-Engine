@@ -172,7 +172,7 @@ int main(int argc, char **argv) {
 
   SDL_Surface *surface = SDL_GetWindowSurface(window);
 
-  float factor = 0.75f;
+  float factor = 0.5f;
 
   struct dsr_Surface dsr_surface = { 0 };
   update_dsr_surface(&dsr_surface, surface, factor);
@@ -213,7 +213,7 @@ int main(int argc, char **argv) {
 
   struct Arena arena = arena_create(PAGE_SIZE * 2);
 
-  uint32_t curr_sector = 0;
+  uint32_t curr_sector = 1;
 
   SDL_Event e;
   while (true) {

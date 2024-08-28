@@ -3,6 +3,8 @@ MAKEFLAGS += --no-print-directory -s
 ROOT_PATH := $(strip $(patsubst %/, %, $(dir $(abspath $(lastword $(MAKEFILE_LIST))))))
 export ROOT_PATH
 
+PLATFORM := linux
+
 CC := gcc
 LD := gcc
 
@@ -19,7 +21,7 @@ LDFLAGS := -Wl,-rpath=$(ROOT_PATH)/$(BIN) -L$(ROOT_PATH)/$(BIN) -lm
 
 GENERATE_ASM := 1
 
-export CC LD SRC OBJ BIN INCLUDE EXTERNAL_DIR EXTERNAL_LIBS_DIR CFLAGS LDFLAGS GENERATE_ASM
+export PLATFORM CC LD SRC OBJ BIN INCLUDE EXTERNAL_DIR EXTERNAL_LIBS_DIR CFLAGS LDFLAGS GENERATE_ASM
 
 OBJ_DIRS := $(patsubst $(SRC)/%, $(OBJ)/%, $(shell find $(SRC)/ -mindepth 1 -type d))
 CREATE_DIR_COMMAND := ./dirs.sh
