@@ -213,7 +213,7 @@ int main(int argc, char **argv) {
 
   struct Arena arena = arena_create(PAGE_SIZE * 2);
 
-  uint32_t curr_sector = 1;
+  uint32_t curr_sector = 0;
 
   SDL_Event e;
   while (true) {
@@ -483,9 +483,9 @@ Break:
       ArenaSaveState r;
       arena_save(arena, &r);
 
-      //dsr_render(&arena, &dsr_surface, &scene, &cam, curr_sector);
-      dsr_render_multithreaded(&arena, pool, &dsr_surface, &scene, &cam,
-                               curr_sector);
+      dsr_render(&arena, &dsr_surface, &scene, &cam, curr_sector);
+      //dsr_render_multithreaded(&arena, pool, &dsr_surface, &scene, &cam,
+      //                         curr_sector);
 
       struct dsr_Surface dest = {
         .width = surface->w,

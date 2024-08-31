@@ -21,7 +21,7 @@ struct PortalMask {
 struct Portal {
   uint32_t sector_index;
   int64_t wall_index;
-  int64_t from_sector_index;
+  uint32_t from_sector_index;
   struct PortalMask *portal_mask;
 };
 
@@ -158,6 +158,8 @@ struct WallSection {
   const struct dsr_Scene *scene;
   const struct hog_Camera *camera;
 
+  vec2 proj_plane_size;
+
   float *depth_buffer;
 
   const struct Portal *portal;
@@ -169,6 +171,7 @@ struct WallSection {
   int32_t sign;
 
   const struct dsr_Sector *cam_sector;
+  const struct dsr_Sector *portal_from_sector;
   const struct dsr_Sector *drawing_sector;
   const struct dsr_Wall *wall;
 
@@ -195,8 +198,9 @@ static void *draw_wall_section(struct WallSection *args) {
 
     float t = (float)(x - unclamped_x1) / (float)l;
 
-    float depth_lerp =
-      glm_lerp(args->z1, args->z2, t) / args->camera->far_clipping_plane;
+    float z = glm_lerp(args->z1, args->z2, t);
+
+    float depth_lerp = z / args->camera->far_clipping_plane;
 
     if (/* !args->wall->is_portal && */ depth_lerp > args->depth_buffer[x]) {
       continue;
@@ -242,6 +246,23 @@ static void *draw_wall_section(struct WallSection *args) {
 
     } else {
       draw_vertical_line(args->surface, x, y[0], y[1], c);
+
+      float floor_diff = args->drawing_sector->floor_height -
+                         args->portal_from_sector->floor_height;
+      float ceil_diff = args->portal_from_sector->ceil_height -
+                        args->drawing_sector->ceil_height;
+
+      printf("%ld %ld %f\n", args->drawing_sector - args->scene->sectors.items,
+             args->portal_from_sector - args->scene->sectors.items, floor_diff);
+
+      if (floor_diff > 0.0f) {
+        int32_t screen_floor_height = int_clamp(
+          y[1] +
+            lround(((floor_diff / z) * args->camera->near_clipping_plane) *
+                   ((float)args->surface->width / args->proj_plane_size[0])),
+          draw_height[0], draw_height[1]);
+        draw_vertical_line(args->surface, x, y[1], screen_floor_height, c);
+      }
 
       //if (args->drawing_sector->ceil_height < args->cam_sector->ceil_height) {
       //  draw_vertical_line(args->surface, x, y[0], draw_height[0], c);
@@ -445,6 +466,8 @@ static void render_wall(struct RenderWallArgs *args) {
       .scene = args->scene,
       .camera = args->camera,
 
+      .proj_plane_size = { args->proj_plane_size[0], args->proj_plane_size[1] },
+
       .depth_buffer = args->depth_buffer,
 
       .portal = args->portal,
@@ -458,6 +481,8 @@ static void render_wall(struct RenderWallArgs *args) {
       .sign = sign,
 
       .cam_sector = &DA_AT(args->scene->sectors, args->cam_sector_index),
+      .portal_from_sector =
+        &DA_AT(args->scene->sectors, args->portal->from_sector_index),
       .drawing_sector =
         &DA_AT(args->scene->sectors, args->drawing_sector_index),
 
@@ -484,6 +509,9 @@ static void render_wall(struct RenderWallArgs *args) {
         .scene = args->scene,
         .camera = args->camera,
 
+        .proj_plane_size = { args->proj_plane_size[0],
+                             args->proj_plane_size[1] },
+
         .depth_buffer = args->depth_buffer,
 
         .portal = args->portal,
@@ -496,6 +524,8 @@ static void render_wall(struct RenderWallArgs *args) {
         .sign = sign,
 
         .cam_sector = &DA_AT(args->scene->sectors, args->cam_sector_index),
+        .portal_from_sector =
+          &DA_AT(args->scene->sectors, args->portal->from_sector_index),
         .drawing_sector =
           &DA_AT(args->scene->sectors, args->drawing_sector_index),
 
@@ -527,6 +557,8 @@ void dsr_render_walls(struct Arena *arena, struct tp_ThreadPool *pool,
                       const struct dsr_Scene *scene,
                       const struct hog_Camera *camera, int64_t current_sector,
                       vec2 proj_plane_size) {
+  assert(current_sector >= 0);
+
   if (scene->sectors.count == 0) {
     return;
   }
