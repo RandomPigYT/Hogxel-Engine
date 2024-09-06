@@ -1,4 +1,4 @@
-MAKEFLAGS += --no-print-directory -s
+MAKEFLAGS += --no-print-directory -s -j $(shell nproc)
 
 ROOT_PATH := $(strip $(patsubst %/, %, $(dir $(abspath $(lastword $(MAKEFILE_LIST))))))
 export ROOT_PATH

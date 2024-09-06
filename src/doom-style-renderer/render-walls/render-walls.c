@@ -163,6 +163,8 @@ struct WallSection {
   float *depth_buffer;
 
   const struct Portal *portal;
+  const struct Portal *wall_portal; /* Not NULL only if the wall 
+																			 being drawn is a portal */
 
   int32_t screen_space[4][2];
   int32_t x1, x2, z1, z2; // Range of the entire wall
@@ -197,6 +199,7 @@ static void *draw_wall_section(struct WallSection *args) {
     }
 
     float t = (float)(x - unclamped_x1) / (float)l;
+    float unflipped_t = t;
 
     float z = glm_lerp(args->z1, args->z2, t);
 
@@ -245,23 +248,34 @@ static void *draw_wall_section(struct WallSection *args) {
       draw_vertical_line(args->surface, x, y[0], y[1], c);
 
     } else {
-      draw_vertical_line(args->surface, x, y[0], y[1], c);
+      struct dsr_Sector *s =
+        &DA_AT(args->scene->sectors, args->wall_portal->sector_index);
+      int32_t wall_portal_y[2] = {
+        int_clamp(lround(glm_lerp(
+                    args->wall_portal->portal_mask->portal_screen_space[0][1],
+                    args->wall_portal->portal_mask->portal_screen_space[3][1],
+                    unflipped_t)),
+                  draw_height[0], draw_height[1]),
+        int_clamp(lround(glm_lerp(
+                    args->wall_portal->portal_mask->portal_screen_space[1][1],
+                    args->wall_portal->portal_mask->portal_screen_space[2][1],
+                    unflipped_t)),
+                  draw_height[0], draw_height[1]),
+      };
 
-      float floor_diff = args->drawing_sector->floor_height -
-                         args->portal_from_sector->floor_height;
-      float ceil_diff = args->portal_from_sector->ceil_height -
-                        args->drawing_sector->ceil_height;
+      draw_vertical_line(args->surface, x, wall_portal_y[0], wall_portal_y[1],
+                         c);
 
-      printf("%ld %ld %f\n", args->drawing_sector - args->scene->sectors.items,
-             args->portal_from_sector - args->scene->sectors.items, floor_diff);
+      if (args->drawing_sector->ceil_height > s->ceil_height) {
+        printf("hi\n");
+        draw_vertical_line(args->surface, x, y[0], wall_portal_y[0],
+                           (uint8_t[]){ 255, 0, 255, 255 });
+      }
 
-      if (floor_diff > 0.0f) {
-        int32_t screen_floor_height = int_clamp(
-          y[1] +
-            lround(((floor_diff / z) * args->camera->near_clipping_plane) *
-                   ((float)args->surface->width / args->proj_plane_size[0])),
-          draw_height[0], draw_height[1]);
-        draw_vertical_line(args->surface, x, y[1], screen_floor_height, c);
+      if (args->drawing_sector->floor_height < s->floor_height) {
+        printf("hello\n");
+        draw_vertical_line(args->surface, x, y[1], wall_portal_y[1],
+                           (uint8_t[]){ 255, 0, 255, 255 });
       }
 
       //if (args->drawing_sector->ceil_height < args->cam_sector->ceil_height) {
@@ -380,6 +394,14 @@ static void render_wall(struct RenderWallArgs *args) {
     x2 = screen_space[2][0];
     z2 = clipped_coords[1][2];
 
+    /*
+		 *	0--------------3
+		 *	|							 |
+		 *	|							 |
+		 *	|							 |
+		 *	1--------------2
+		 */
+
     y_coords[0] = screen_space[0][1];
     y_coords[1] = screen_space[1][1];
     y_coords[2] = screen_space[2][1];
@@ -391,11 +413,22 @@ static void render_wall(struct RenderWallArgs *args) {
     x2 = screen_space[0][0];
     z2 = clipped_coords[0][2];
 
+    /*
+		 *	3--------------0
+		 *	|							 |
+		 *	|							 |
+		 *	|							 |
+		 *	2--------------1
+		 */
+
     y_coords[0] = screen_space[3][1];
     y_coords[1] = screen_space[2][1];
     y_coords[2] = screen_space[1][1];
     y_coords[3] = screen_space[0][1];
   }
+
+  // This pointer must not be returned or stored anywhere outside of this function
+  struct Portal *wall_portal = NULL;
 
   if (wall->is_portal) {
     struct Portal p = { 0 };
@@ -416,12 +449,38 @@ static void render_wall(struct RenderWallArgs *args) {
     }
 
     if (should_append) {
+      struct dsr_Sector *to_sector =
+        &DA_AT(args->scene->sectors, p.sector_index);
+      struct dsr_Sector *drawing_sector =
+        &DA_AT(args->scene->sectors, args->drawing_sector_index);
+
       p.from_sector_index = args->drawing_sector_index;
+
       p.wall_index = args->wall_index;
       p.portal_mask = arena_alloc(args->arena, sizeof(*p.portal_mask));
       assert(p.portal_mask != NULL && "Arena overflow");
 
       p.portal_mask->prev = args->portal->portal_mask;
+
+      // Shrink portal height based on the floor and ceiling heights of the neighbouring sectors
+      float floor_diff = to_sector->floor_height - drawing_sector->floor_height;
+      float ceil_diff = to_sector->ceil_height - drawing_sector->ceil_height;
+
+      if (floor_diff > 0.0f) {
+        int floor_offset1 = floor_diff / z1;
+        int floor_offset2 = floor_diff / z2;
+
+        y_coords[1] -= floor_offset1;
+        y_coords[2] -= floor_offset2;
+      }
+
+      if (ceil_diff < 0.0f) {
+        int ceil_offset1 = ceil_diff / z1;
+        int ceil_offset2 = ceil_diff / z2;
+
+        y_coords[0] += ceil_offset1;
+        y_coords[3] += ceil_offset2;
+      }
 
       // The y axis of the world space coordinates are flipped when converting to scree space,
       // hence, the higher point in world space has a smaller screen space y coordinate.
@@ -436,7 +495,10 @@ static void render_wall(struct RenderWallArgs *args) {
         p.portal_mask->portal_screen_space[i][1] = y_coords[i];
       }
 
+      uint32_t next_index = args->portal_queue.portals.count;
       DA_APPEND(&args->portal_queue.portals, p);
+
+      wall_portal = &DA_AT(args->portal_queue.portals, next_index);
     }
   }
 
@@ -461,6 +523,7 @@ static void render_wall(struct RenderWallArgs *args) {
       .depth_buffer = args->depth_buffer,
 
       .portal = args->portal,
+      .wall_portal = wall_portal,
 
       .x1 = x1,
       .z1 = z1,
@@ -505,6 +568,7 @@ static void render_wall(struct RenderWallArgs *args) {
         .depth_buffer = args->depth_buffer,
 
         .portal = args->portal,
+        .wall_portal = wall_portal,
 
         .x1 = x1,
         .z1 = z1,
