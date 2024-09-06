@@ -387,7 +387,6 @@ static void render_wall(struct RenderWallArgs *args) {
   }
 
   int32_t x1, x2, z1, z2;
-  int32_t y_coords[4];
 
   if (screen_space[2][0] >= screen_space[0][0]) {
     x1 = screen_space[0][0];
@@ -395,37 +394,11 @@ static void render_wall(struct RenderWallArgs *args) {
     x2 = screen_space[2][0];
     z2 = clipped_coords[1][2];
 
-    /*
-		 *	0--------------3
-		 *	|							 |
-		 *	|							 |
-		 *	|							 |
-		 *	1--------------2
-		 */
-
-    y_coords[0] = screen_space[0][1];
-    y_coords[1] = screen_space[1][1];
-    y_coords[2] = screen_space[2][1];
-    y_coords[3] = screen_space[3][1];
-
   } else {
     x1 = screen_space[2][0];
     z1 = clipped_coords[1][2];
     x2 = screen_space[0][0];
     z2 = clipped_coords[0][2];
-
-    /*
-		 *	3--------------0
-		 *	|							 |
-		 *	|							 |
-		 *	|							 |
-		 *	2--------------1
-		 */
-
-    y_coords[0] = screen_space[3][1];
-    y_coords[1] = screen_space[2][1];
-    y_coords[2] = screen_space[1][1];
-    y_coords[3] = screen_space[0][1];
   }
 
   // This pointer must not be returned or stored anywhere outside of this function
@@ -463,34 +436,71 @@ static void render_wall(struct RenderWallArgs *args) {
 
       p.portal_mask->prev = args->portal->portal_mask;
 
-      // Shrink portal height based on the floor and ceiling heights of the neighbouring sectors
-      float floor_diff = to_sector->floor_height - drawing_sector->floor_height;
-      float ceil_diff = to_sector->ceil_height - drawing_sector->ceil_height;
+      float portal_y_proj[4];
+      int32_t portal_y_screen_space[4];
 
-      if (floor_diff > 0.0f) {
-        int floor_offset1 = (floor_diff * args->camera->near_clipping_plane *
-                             args->surface->width) /
-                            (args->proj_plane_size[0] * z1);
+      {
+        float ceil_height =
+          (to_sector->ceil_height < drawing_sector->ceil_height)
+            ? to_sector->ceil_height
+            : drawing_sector->ceil_height;
 
-        int floor_offset2 = (floor_diff * args->camera->near_clipping_plane *
-                             args->surface->width) /
-                            (args->proj_plane_size[0] * z2);
+        float floor_height =
+          (to_sector->floor_height > drawing_sector->floor_height)
+            ? to_sector->floor_height
+            : drawing_sector->floor_height;
 
-        y_coords[1] -= floor_offset1;
-        y_coords[2] -= floor_offset2;
+        vec2 tmp = { 0 };
+
+        y_projection(args->camera, clipped_coords[0], floor_height, ceil_height,
+                     tmp);
+        portal_y_proj[0] = tmp[0];
+        portal_y_proj[1] = tmp[1];
+
+        y_projection(args->camera, clipped_coords[1], floor_height, ceil_height,
+                     tmp);
+        portal_y_proj[3] = tmp[0];
+        portal_y_proj[2] = tmp[1];
+
+        for (uint8_t i = 0; i < 4; i++) {
+          int32_t tmp[2] = { 0 };
+          to_screen_space(args->surface, (float[]){ 0.0f, portal_y_proj[i] },
+                          args->proj_plane_size, tmp);
+          portal_y_screen_space[i] = tmp[1];
+        }
       }
 
-      if (ceil_diff < 0.0f) {
-        int ceil_offset1 = (ceil_diff * args->camera->near_clipping_plane *
-                            args->surface->width) /
-                           (args->proj_plane_size[0] * z1);
+      int32_t sorted_portal_y_coords[4];
+      if (screen_space[2][0] >= screen_space[0][0]) {
+        /*
+				 * y_coords:
+				 *
+				 *	0--------------3
+				 *	|							 |
+				 *	|							 |
+				 *	|							 |
+				 *	1--------------2
+				 */
 
-        int ceil_offset2 = (ceil_diff * args->camera->near_clipping_plane *
-                            args->surface->width) /
-                           (args->proj_plane_size[0] * z2);
+        sorted_portal_y_coords[0] = portal_y_screen_space[0];
+        sorted_portal_y_coords[1] = portal_y_screen_space[1];
+        sorted_portal_y_coords[2] = portal_y_screen_space[2];
+        sorted_portal_y_coords[3] = portal_y_screen_space[3];
+      } else {
+        /*
+				 * y_coords:
+				 *
+				 *	3--------------0
+				 *	|							 |
+				 *	|							 |
+				 *	|							 |
+				 *	2--------------1
+				 */
 
-        y_coords[0] -= ceil_offset1;
-        y_coords[3] -= ceil_offset2;
+        sorted_portal_y_coords[0] = portal_y_screen_space[3];
+        sorted_portal_y_coords[1] = portal_y_screen_space[2];
+        sorted_portal_y_coords[2] = portal_y_screen_space[1];
+        sorted_portal_y_coords[3] = portal_y_screen_space[0];
       }
 
       // The y axis of the world space coordinates are flipped when converting to scree space,
@@ -503,7 +513,7 @@ static void render_wall(struct RenderWallArgs *args) {
           p.portal_mask->portal_screen_space[i][0] = x2;
         }
 
-        p.portal_mask->portal_screen_space[i][1] = y_coords[i];
+        p.portal_mask->portal_screen_space[i][1] = sorted_portal_y_coords[i];
       }
 
       uint32_t next_index = args->portal_queue.portals.count;
