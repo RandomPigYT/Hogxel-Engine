@@ -263,19 +263,15 @@ static void *draw_wall_section(struct WallSection *args) {
                   draw_height[0], draw_height[1]),
       };
 
-      draw_vertical_line(args->surface, x, wall_portal_y[0], wall_portal_y[1],
-                         c);
+      //draw_vertical_line(args->surface, x, wall_portal_y[0], wall_portal_y[1],
+      //                   c);
 
       if (args->drawing_sector->ceil_height > s->ceil_height) {
-        printf("hi\n");
-        draw_vertical_line(args->surface, x, y[0], wall_portal_y[0],
-                           (uint8_t[]){ 255, 0, 255, 255 });
+        draw_vertical_line(args->surface, x, y[0], wall_portal_y[0], c);
       }
 
       if (args->drawing_sector->floor_height < s->floor_height) {
-        printf("hello\n");
-        draw_vertical_line(args->surface, x, y[1], wall_portal_y[1],
-                           (uint8_t[]){ 255, 0, 255, 255 });
+        draw_vertical_line(args->surface, x, y[1], wall_portal_y[1], c);
       }
 
       //if (args->drawing_sector->ceil_height < args->cam_sector->ceil_height) {
@@ -467,19 +463,29 @@ static void render_wall(struct RenderWallArgs *args) {
       float ceil_diff = to_sector->ceil_height - drawing_sector->ceil_height;
 
       if (floor_diff > 0.0f) {
-        int floor_offset1 = floor_diff / z1;
-        int floor_offset2 = floor_diff / z2;
+        int floor_offset1 = (floor_diff * args->camera->near_clipping_plane *
+                             args->surface->width) /
+                            (args->proj_plane_size[0] * z1);
+
+        int floor_offset2 = (floor_diff * args->camera->near_clipping_plane *
+                             args->surface->width) /
+                            (args->proj_plane_size[0] * z2);
 
         y_coords[1] -= floor_offset1;
         y_coords[2] -= floor_offset2;
       }
 
       if (ceil_diff < 0.0f) {
-        int ceil_offset1 = ceil_diff / z1;
-        int ceil_offset2 = ceil_diff / z2;
+        int ceil_offset1 = (ceil_diff * args->camera->near_clipping_plane *
+                            args->surface->width) /
+                           (args->proj_plane_size[0] * z1);
 
-        y_coords[0] += ceil_offset1;
-        y_coords[3] += ceil_offset2;
+        int ceil_offset2 = (ceil_diff * args->camera->near_clipping_plane *
+                            args->surface->width) /
+                           (args->proj_plane_size[0] * z2);
+
+        y_coords[0] -= ceil_offset1;
+        y_coords[3] -= ceil_offset2;
       }
 
       // The y axis of the world space coordinates are flipped when converting to scree space,
@@ -530,7 +536,7 @@ static void render_wall(struct RenderWallArgs *args) {
       .x2 = x2,
       .z2 = z2,
 
-      .x_range = { x1, x2 },
+      .x_range = { x1, x2 - 1 },
       .sign = sign,
 
       .cam_sector = &DA_AT(args->scene->sectors, args->cam_sector_index),
