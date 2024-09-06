@@ -178,6 +178,8 @@ struct WallSection {
   const struct dsr_Wall *wall;
 
   uint8_t colour[4];
+  uint8_t floor_colour[4];
+  uint8_t ceil_colour[4];
 };
 static void *draw_wall_section(struct WallSection *args) {
   int32_t draw_width[2];
@@ -240,9 +242,9 @@ static void *draw_wall_section(struct WallSection *args) {
     };
 
     draw_vertical_line(args->surface, x, draw_height[0], y[0],
-                       (uint8_t[4]){ 35, 35, 35, 255 });
+                       args->ceil_colour);
     draw_vertical_line(args->surface, x, y[1], draw_height[1],
-                       (uint8_t[4]){ 100, 24, 24, 255 });
+                       args->floor_colour);
 
     if (!args->wall->is_portal) {
       draw_vertical_line(args->surface, x, y[0], y[1], c);
@@ -302,7 +304,10 @@ struct RenderWallArgs {
   uint32_t drawing_sector_index;
 
   uint32_t wall_index;
+
   uint8_t wall_colour[4];
+  uint8_t floor_colour[4];
+  uint8_t ceil_colour[4];
 
   struct PortalQueue portal_queue;
   const struct Portal *portal;
@@ -536,7 +541,7 @@ static void render_wall(struct RenderWallArgs *args) {
       .x2 = x2,
       .z2 = z2,
 
-      .x_range = { x1, x2 - 1 },
+      .x_range = { x1, x2 },
       .sign = sign,
 
       .cam_sector = &DA_AT(args->scene->sectors, args->cam_sector_index),
@@ -549,7 +554,10 @@ static void render_wall(struct RenderWallArgs *args) {
     };
 
     memcpy(tmp->screen_space, screen_space, sizeof(screen_space));
+
     memcpy(tmp->colour, args->wall_colour, sizeof(args->wall_colour));
+    memcpy(tmp->floor_colour, args->floor_colour, sizeof(args->floor_colour));
+    memcpy(tmp->ceil_colour, args->ceil_colour, sizeof(args->ceil_colour));
 
     draw_wall_section(tmp);
 
@@ -593,7 +601,10 @@ static void render_wall(struct RenderWallArgs *args) {
       };
 
       memcpy(tmp->screen_space, screen_space, sizeof(screen_space));
+
       memcpy(tmp->colour, args->wall_colour, sizeof(args->wall_colour));
+      memcpy(tmp->floor_colour, args->floor_colour, sizeof(args->floor_colour));
+      memcpy(tmp->ceil_colour, args->ceil_colour, sizeof(args->ceil_colour));
 
       tmp->x_range[0] = glm_imin(x1 + i * section_size, x2);
       tmp->x_range[1] = glm_imax(tmp->x_range[0] + section_size - 1, x2);
@@ -623,20 +634,43 @@ void dsr_render_walls(struct Arena *arena, struct tp_ThreadPool *pool,
     return;
   }
 
-  srand((int)6942080085);
+  srand((int)80085);
   for (int32_t i = 0; i < rand() % 100; i++) {
     rand();
   }
-  DA_TYPE_ARRAY(uint8_t, 4) palette = { 0 };
+  DA_TYPE_ARRAY(uint8_t, 4) wall_palette = { 0 };
+  DA_TYPE_ARRAY(uint8_t, 4) floor_palette = { 0 };
+  DA_TYPE_ARRAY(uint8_t, 4) ceil_palette = { 0 };
+
   for (uint32_t i = 0; i < scene->walls.count; i++) {
-    DA_APPEND_NO_ASSIGN(&palette);
-    DA_AT(palette, palette.count - 1)
+    DA_APPEND_NO_ASSIGN(&wall_palette);
+    DA_AT(wall_palette, wall_palette.count - 1)
     [0] = ((float)rand() / (float)RAND_MAX) * 255.0f;
-    DA_AT(palette, palette.count - 1)
+    DA_AT(wall_palette, wall_palette.count - 1)
     [1] = ((float)rand() / (float)RAND_MAX) * 255.0f;
-    DA_AT(palette, palette.count - 1)
+    DA_AT(wall_palette, wall_palette.count - 1)
     [2] = ((float)rand() / (float)RAND_MAX) * 255.0f;
-    DA_AT(palette, palette.count - 1)[3] = 255;
+    DA_AT(wall_palette, wall_palette.count - 1)[3] = 255;
+  }
+
+  for (uint32_t i = 0; i < scene->sectors.count; i++) {
+    DA_APPEND_NO_ASSIGN(&floor_palette);
+    DA_AT(floor_palette, floor_palette.count - 1)
+    [0] = ((float)rand() / (float)RAND_MAX) * 255.0f;
+    DA_AT(floor_palette, floor_palette.count - 1)
+    [1] = ((float)rand() / (float)RAND_MAX) * 255.0f;
+    DA_AT(floor_palette, floor_palette.count - 1)
+    [2] = ((float)rand() / (float)RAND_MAX) * 255.0f;
+    DA_AT(floor_palette, floor_palette.count - 1)[3] = 255;
+
+    DA_APPEND_NO_ASSIGN(&ceil_palette);
+    DA_AT(ceil_palette, ceil_palette.count - 1)
+    [0] = ((float)rand() / (float)RAND_MAX) * 255.0f;
+    DA_AT(ceil_palette, ceil_palette.count - 1)
+    [1] = ((float)rand() / (float)RAND_MAX) * 255.0f;
+    DA_AT(ceil_palette, ceil_palette.count - 1)
+    [2] = ((float)rand() / (float)RAND_MAX) * 255.0f;
+    DA_AT(ceil_palette, ceil_palette.count - 1)[3] = 255;
   }
 
   struct RenderWallArgs render_wall_args = {
@@ -715,14 +749,21 @@ void dsr_render_walls(struct Arena *arena, struct tp_ThreadPool *pool,
       uint32_t wall_index = DA_AT(sector->walls, j);
 
       uint8_t colour[4] = {
-        DA_AT(palette, wall_index)[0],
-        DA_AT(palette, wall_index)[1],
-        DA_AT(palette, wall_index)[2],
+        DA_AT(wall_palette, wall_index)[0],
+        DA_AT(wall_palette, wall_index)[1],
+        DA_AT(wall_palette, wall_index)[2],
         255,
       };
 
       render_wall_args.wall_index = wall_index;
       memcpy(render_wall_args.wall_colour, colour, sizeof(colour));
+
+      memcpy(render_wall_args.floor_colour,
+             DA_AT(floor_palette, p->sector_index),
+             sizeof(floor_palette.items[0]));
+
+      memcpy(render_wall_args.ceil_colour, DA_AT(ceil_palette, p->sector_index),
+             sizeof(ceil_palette.items[0]));
 
       render_wall(&render_wall_args);
     }
@@ -731,6 +772,10 @@ void dsr_render_walls(struct Arena *arena, struct tp_ThreadPool *pool,
   }
 
   free(render_wall_args.depth_buffer);
-  DA_FREE(&palette);
+
+  DA_FREE(&wall_palette);
+  DA_FREE(&floor_palette);
+  DA_FREE(&ceil_palette);
+
   DA_FREE(&render_wall_args.portal_queue.portals);
 }
