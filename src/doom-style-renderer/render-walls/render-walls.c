@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include <time.h>
 
 #define PAGE_SIZE 4096
 
@@ -644,7 +645,17 @@ void dsr_render_walls(struct Arena *arena, struct tp_ThreadPool *pool,
     return;
   }
 
-  srand((int)80085);
+  srand(time(NULL));
+
+  static int seed = 0;
+
+  static bool initialised = false;
+  if (!initialised) {
+    seed = rand();
+    initialised = true;
+  }
+
+  srand(seed);
   for (int32_t i = 0; i < rand() % 100; i++) {
     rand();
   }

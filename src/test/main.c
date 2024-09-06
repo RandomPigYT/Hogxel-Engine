@@ -172,7 +172,7 @@ int main(int argc, char **argv) {
 
   SDL_Surface *surface = SDL_GetWindowSurface(window);
 
-  float factor = 0.5f;
+  float factor = 0.35f;
 
   struct dsr_Surface dsr_surface = { 0 };
   update_dsr_surface(&dsr_surface, surface, factor);
@@ -431,6 +431,7 @@ int main(int argc, char **argv) {
           }
 
         } else {
+#if 0
           if (did_isect) {
             vec4 wall_dir;
             glm_vec4_sub(l1[1], l1[0], wall_dir);
@@ -449,6 +450,7 @@ int main(int argc, char **argv) {
 
             glm_vec3_copy(inter, prev_pos);
           }
+#endif
         }
       }
     }
