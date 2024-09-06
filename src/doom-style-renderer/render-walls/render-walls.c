@@ -365,21 +365,11 @@ static void render_wall(struct RenderWallArgs *args) {
     projected[3][1] = temp[0];
   }
 
-  //printf("Projected: \n");
-  for (uint32_t i = 0; i < 4; i++) {
-    //glm_vec2_print(projected[i], stdout);
-  }
-
   int32_t screen_space[4][2] = { 0 };
-  //printf("Screen space: \n");
   for (uint32_t i = 0; i < 4; i++) {
     to_screen_space(args->surface, projected[i], args->proj_plane_size,
                     screen_space[i]);
   }
-
-  //printf("\n");
-  //printf("======================================================\n");
-  //printf("\n");
 
   int32_t x1, x2, z1, z2;
   int32_t y_coords[4];
@@ -630,16 +620,6 @@ void dsr_render_walls(struct Arena *arena, struct tp_ThreadPool *pool,
       render_wall_args.depth_buffer[i] = INFINITY;
     }
     struct Portal *p = &DA_AT(render_wall_args.portal_queue.portals, 0);
-    //printf("Sector: %d\n", p->sector_index);
-    //printf("draw_area {\n"
-    //       "  { %d, %d },\n"
-    //       "  { %d, %d },\n"
-    //       "  { %d, %d },\n"
-    //       "  { %d, %d },\n"
-    //       "}\n\n",
-    //       p->draw_area[0][0], p->draw_area[0][1], p->draw_area[1][0],
-    //       p->draw_area[1][1], p->draw_area[2][0], p->draw_area[2][1],
-    //       p->draw_area[3][0], p->draw_area[3][1]);
 
     struct dsr_Sector *sector = &DA_AT(scene->sectors, p->sector_index);
 
