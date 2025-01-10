@@ -12,7 +12,6 @@
 // Compatible with Windows
 char *fio_read_file(const char *path);
 
-#define UTIL_FILE_IO_IMPLEMENTATION
 #ifdef UTIL_FILE_IO_IMPLEMENTATION
 
 char *fio_read_file(const char *path) {

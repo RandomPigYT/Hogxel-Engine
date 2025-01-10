@@ -172,7 +172,7 @@ int main(int argc, char **argv) {
 
   SDL_Surface *surface = SDL_GetWindowSurface(window);
 
-  float factor = 0.35f;
+  float factor = 0.275;
 
   struct dsr_Surface dsr_surface = { 0 };
   update_dsr_surface(&dsr_surface, surface, factor);
